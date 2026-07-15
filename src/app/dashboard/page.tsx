@@ -101,9 +101,16 @@ export default function DashboardPage() {
   } | null>(null);
 
   useEffect(() => {
-    apiFetch("/api/dashboard/stats")
-      .then((r) => r.json())
-      .then((data) => {
+    let cancelled = false;
+    (async () => {
+      const [statsRes, ordersRes] = await Promise.all([
+        apiFetch("/api/dashboard/stats"),
+        apiFetch("/api/orders"),
+      ]);
+      if (cancelled) return;
+
+      try {
+        const data = await statsRes.json();
         if (data && data.stats) {
           const s = data.stats;
           setStats({
@@ -135,8 +142,22 @@ export default function DashboardPage() {
         } else if (data) {
           setStats(data);
         }
-      })
-      .catch(() => setStats(null));
+      } catch {
+        setStats(null);
+      }
+
+      try {
+        const ordersData = await ordersRes.json();
+        setRecentOrders(Array.isArray(ordersData) ? ordersData.slice(0, 5) : []);
+      } catch {
+        setRecentOrders([]);
+      } finally {
+        setLoadingOrders(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const refreshPending = useCallback(async () => {
@@ -174,21 +195,6 @@ export default function DashboardPage() {
   useEffect(() => {
     refreshPending();
   }, [refreshPending]);
-
-  useEffect(() => {
-    async function loadRecent() {
-      try {
-        const res = await apiFetch("/api/orders");
-        const data = await res.json();
-        setRecentOrders(Array.isArray(data) ? data.slice(0, 5) : []);
-      } catch {
-        setRecentOrders([]);
-      } finally {
-        setLoadingOrders(false);
-      }
-    }
-    loadRecent();
-  }, []);
 
   const approvalRows: { kind: "dealer" | "order" | "credit-note"; id: string; title: string; subtitle: string }[] = [];
   for (const d of pendingDealers) {
@@ -488,6 +494,18 @@ export default function DashboardPage() {
                     </Link>
                   </Button>
                   <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                    <Link href="/dashboard/orders/new">
+                      <ShoppingCart className="h-5 w-5" />
+                      <span className="text-xs font-medium">New order</span>
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                    <Link href="/dashboard/dealers/new">
+                      <Users className="h-5 w-5" />
+                      <span className="text-xs font-medium">Add dealer</span>
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="h-20 flex-col gap-2" asChild>
                     <Link href="/dashboard/reports">
                       <BarChart3 className="h-5 w-5" />
                       <span className="text-xs font-medium">Reports</span>
@@ -550,7 +568,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {role !== "MANAGEMENT_ADMIN" && (
+              {role !== "MANAGEMENT_ADMIN" && role !== "SALES_MARKETING" && (
                 <Link
                   href="/dashboard/finance/invoices"
                   className="flex gap-3 rounded-lg border border-red-200 bg-red-50/80 p-3 transition-colors hover:bg-red-100"
@@ -562,7 +580,7 @@ export default function DashboardPage() {
                   </div>
                 </Link>
               )}
-              {role !== "MANAGEMENT_ADMIN" && (
+              {role === "PRODUCTION_LOGISTICS" && (
                 <Link
                   href="/dashboard/inventory"
                   className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50/80 p-3 transition-colors hover:bg-amber-100"
@@ -571,6 +589,18 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-medium text-amber-900">Low stock</p>
                     <p className="text-sm text-amber-800">Check inventory levels and reorder</p>
+                  </div>
+                </Link>
+              )}
+              {role === "SALES_MARKETING" && (
+                <Link
+                  href="/dashboard/orders/new"
+                  className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50/80 p-3 transition-colors hover:bg-amber-100"
+                >
+                  <ShoppingCart className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                  <div>
+                    <p className="font-medium text-amber-900">Create an order</p>
+                    <p className="text-sm text-amber-800">Place a new dealer order quickly</p>
                   </div>
                 </Link>
               )}

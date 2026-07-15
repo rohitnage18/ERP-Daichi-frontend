@@ -58,9 +58,14 @@ export default function NewProductPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
+          productCode: formData.productCode,
+          name: formData.name,
+          categoryId: formData.subCategoryId || undefined,
+          unitOfMeasure: formData.unitOfMeasure,
           basePrice: parseFloat(formData.basePrice),
           gstRate: parseFloat(formData.gstRate),
+          description: formData.description || undefined,
+          targetCrops: formData.targetCrops || undefined,
         }),
       });
       if (res.ok) {

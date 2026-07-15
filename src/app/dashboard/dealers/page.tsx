@@ -23,8 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Search, Eye, RefreshCw, Loader2 } from "lucide-react";
+import { Search, Eye, RefreshCw, Loader2, Plus } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { canCreateDealer, canSyncDealers } from "@/lib/permissions";
 
 interface DaichiDealer {
   id: string;
@@ -51,8 +52,8 @@ interface DaichiDealer {
 
 export default function DealersPage() {
   const { data: session } = useSession();
-  const canSync =
-    session?.user?.role === "MANAGEMENT_ADMIN" || session?.user?.role === "SALES_MARKETING";
+  const canSync = canSyncDealers(session?.user?.role);
+  const showNewDealer = canCreateDealer(session?.user?.role);
 
   const [dealers, setDealers] = useState<DaichiDealer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,10 +116,9 @@ export default function DealersPage() {
     fetchSyncStatus();
 
     const poll = setInterval(async () => {
-      await triggerAutoSync();
       await refreshDealersList(false);
       await fetchSyncStatus();
-    }, 30_000);
+    }, 60_000);
 
     const onFocus = () => {
       fetchDealers(false);
@@ -177,7 +177,7 @@ export default function DealersPage() {
                 (Last sync: {formatDate(syncStatus.lastSync.finishedAt)})
               </span>
             )}
-            <span className="ml-2 text-xs text-green-700">• Live refresh every 30s</span>
+            <span className="ml-2 text-xs text-green-700">• Auto-refresh every 60s</span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -193,6 +193,14 @@ export default function DealersPage() {
             )}
             Refresh
           </Button>
+          {showNewDealer && (
+            <Button asChild>
+              <Link href="/dashboard/dealers/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New Dealer
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -231,9 +239,11 @@ export default function DealersPage() {
           ) : filteredDealers.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No dealers found</p>
-              <Link href="/dashboard/dealers/new">
-                <Button className="mt-4">Add Your First Dealer</Button>
-              </Link>
+              {showNewDealer && (
+                <Button className="mt-4" asChild>
+                  <Link href="/dashboard/dealers/new">Add Your First Dealer</Link>
+                </Button>
+              )}
             </div>
           ) : (
             <Table>

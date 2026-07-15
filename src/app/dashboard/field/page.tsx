@@ -39,6 +39,19 @@ const actions = [
 
 export default function FieldHubPage() {
   const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "MANAGEMENT_ADMIN";
+
+  const items = isAdmin
+    ? [
+        {
+          title: "Team field activity",
+          description: "Daily logs, visits, GPS, allowances for the sales team",
+          href: "/dashboard/field/team",
+          icon: ClipboardCheck,
+          color: "bg-emerald-50 text-emerald-700 border-emerald-100",
+        },
+      ]
+    : actions;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 pb-8 sm:px-0">
@@ -50,7 +63,7 @@ export default function FieldHubPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {actions.map((item) => (
+        {items.map((item) => (
           <Link key={item.href} href={item.href} className="block">
             <Card className={`h-full cursor-pointer border-2 transition-shadow active:scale-[0.98] hover:shadow-md ${item.color}`}>
               <CardHeader className="pb-2">

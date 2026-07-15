@@ -9,6 +9,27 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, User, Lock, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/branding/Logo";
 
+function formatSignInError(error: string): string {
+  const decoded = decodeURIComponent(error);
+  if (
+    decoded === "CredentialsSignin" ||
+    decoded.toLowerCase().includes("credential")
+  ) {
+    return "Invalid email or password. Please try again.";
+  }
+  if (
+    decoded.toLowerCase().includes("fetch failed") ||
+    decoded.toLowerCase().includes("cannot reach") ||
+    decoded.toLowerCase().includes("localhost") ||
+    decoded.toLowerCase().includes("api_url")
+  ) {
+    return "Cannot reach the API server. Set API_URL and NEXT_PUBLIC_API_URL on Vercel to your Render backend URL, then redeploy.";
+  }
+  return decoded.length > 8 && decoded.length < 200
+    ? decoded
+    : "Login failed. Please try again.";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -30,7 +51,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError("Invalid email or password. Please try again.");
+        setError(formatSignInError(result.error));
       } else {
         router.push("/dashboard");
         router.refresh();
@@ -56,7 +77,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError("Login failed. Please try again.");
+        setError(formatSignInError(result.error));
       } else {
         router.push("/dashboard");
         router.refresh();

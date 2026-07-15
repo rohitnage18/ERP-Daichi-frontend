@@ -77,27 +77,28 @@ export default function NewOrderPage() {
   const [productSearch, setProductSearch] = useState("");
 
   useEffect(() => {
-    fetchDealers();
-    fetchProducts();
+    let cancelled = false;
+    (async () => {
+      const [dealerData, productData] = await Promise.all([
+        apiFetchJsonArray<Dealer & { _id?: string }>("/api/daichi-dealers"),
+        apiFetchJsonArray<Product>("/api/products"),
+      ]);
+      if (cancelled) return;
+      setDealers(
+        dealerData.map((d) => ({
+          id: d.id || d._id || "",
+          dealerCode: d.dealerCode || d.externalId || "",
+          firmName: d.firmName || "",
+          businessAddress: d.businessAddress || d.firmAddress || "",
+          creditPeriod: d.creditPeriod || "DAYS_60",
+        }))
+      );
+      setProducts(productData);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  const fetchDealers = async () => {
-    const data = await apiFetchJsonArray<Dealer & { _id?: string }>("/api/daichi-dealers");
-    setDealers(
-      data.map((d) => ({
-        id: d.id || d._id || "",
-        dealerCode: d.dealerCode || d.externalId || "",
-        firmName: d.firmName || "",
-        businessAddress: d.businessAddress || d.firmAddress || "",
-        creditPeriod: d.creditPeriod || "DAYS_60",
-      }))
-    );
-  };
-
-  const fetchProducts = async () => {
-    const data = await apiFetchJsonArray<Product>("/api/products");
-    setProducts(data);
-  };
 
   const handleDealerChange = (dealerId: string) => {
     const dealer = dealers.find((d) => d.id === dealerId);

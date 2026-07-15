@@ -1,4 +1,4 @@
-import { getSession } from "next-auth/react";
+import { getSession, signOut } from "next-auth/react";
 
 export function getApiBaseUrl(): string {
   if (typeof window !== "undefined") {
@@ -13,26 +13,83 @@ export function apiUrl(path: string): string {
   return `${base}${p}`;
 }
 
+type SessionWithToken = { accessToken?: string } | null;
+
+let cachedToken: { value: string; at: number } | null = null;
+const TOKEN_CACHE_MS = 60_000;
+
+function clearTokenCache() {
+  cachedToken = null;
+}
+
+/** Wait briefly for NextAuth session/token — avoids race 401s on page load. */
+async function resolveAccessToken(): Promise<string | null> {
+  if (cachedToken && Date.now() - cachedToken.at < TOKEN_CACHE_MS) {
+    return cachedToken.value;
+  }
+
+  let session = (await getSession()) as SessionWithToken;
+  if (session?.accessToken) {
+    cachedToken = { value: session.accessToken, at: Date.now() };
+    return session.accessToken;
+  }
+
+  for (let i = 0; i < 6; i++) {
+    await new Promise((r) => setTimeout(r, 50));
+    session = (await getSession()) as SessionWithToken;
+    if (session?.accessToken) {
+      cachedToken = { value: session.accessToken, at: Date.now() };
+      return session.accessToken;
+    }
+  }
+  return null;
+}
+
+let signingOut = false;
+
+async function handleUnauthorized() {
+  clearTokenCache();
+  if (typeof window === "undefined" || signingOut) return;
+  if (window.location.pathname.startsWith("/login")) return;
+  signingOut = true;
+  try {
+    await signOut({ callbackUrl: "/login" });
+  } finally {
+    signingOut = false;
+  }
+}
+
 /**
  * Call the Daichi backend API with JWT from NextAuth session.
  */
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  const session = await getSession();
   const headers = new Headers(init?.headers);
 
   if (!headers.has("Content-Type") && init?.body && typeof init.body === "string") {
     headers.set("Content-Type", "application/json");
   }
 
-  const token = (session as { accessToken?: string } | null)?.accessToken;
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+  const token = await resolveAccessToken();
+  if (!token) {
+    await handleUnauthorized();
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  return fetch(apiUrl(path), {
+  headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(apiUrl(path), {
     ...init,
     headers,
   });
+
+  if (res.status === 401) {
+    await handleUnauthorized();
+  }
+
+  return res;
 }
 
 /** Extract error message from API JSON body */

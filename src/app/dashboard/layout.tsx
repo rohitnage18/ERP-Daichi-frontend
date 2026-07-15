@@ -7,51 +7,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { HeaderBackButton } from "@/components/shared/BackButton";
 import { Loader2 } from "lucide-react";
-
-const roleBlockedPrefixes: Record<string, string[]> = {
-  MANAGEMENT_ADMIN: [
-    "/dashboard/field",
-    "/dashboard/recommendations",
-    "/dashboard/billing",
-    "/dashboard/logistics",
-    "/dashboard/inventory",
-    "/dashboard/finance",
-    "/dashboard/dealers/new",
-    "/dashboard/orders/new",
-  ],
-  PRODUCTION_LOGISTICS: [
-    "/dashboard/field",
-    "/dashboard/recommendations",
-    "/dashboard/billing",
-    "/dashboard/dealers/new",
-    "/dashboard/orders/new",
-    "/dashboard/approvals",
-    "/dashboard/settings",
-  ],
-  ACCOUNT: [
-    "/dashboard/field",
-    "/dashboard/recommendations",
-    "/dashboard/logistics",
-    "/dashboard/inventory",
-    "/dashboard/approvals",
-    "/dashboard/settings",
-    "/dashboard/products/new",
-    "/dashboard/orders/new",
-  ],
-  SALES_MARKETING: [
-    "/dashboard/billing",
-    "/dashboard/logistics",
-    "/dashboard/inventory",
-    "/dashboard/approvals",
-    "/dashboard/settings",
-  ],
-};
-
-function isPathBlocked(pathname: string, blockedPrefixes: string[]) {
-  return blockedPrefixes.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  );
-}
+import { isPathBlockedForRole } from "@/lib/permissions";
 
 export default function DashboardLayout({
   children,
@@ -72,8 +28,7 @@ export default function DashboardLayout({
     const role = session?.user?.role as string | undefined;
     if (!role || !pathname) return;
 
-    const blocked = roleBlockedPrefixes[role];
-    if (blocked && isPathBlocked(pathname, blocked)) {
+    if (isPathBlockedForRole(pathname, role)) {
       router.replace("/dashboard");
     }
   }, [session, pathname, router]);
@@ -88,6 +43,15 @@ export default function DashboardLayout({
 
   if (!session) {
     return null;
+  }
+
+  // Avoid flashing blocked pages before redirect
+  if (isPathBlockedForRole(pathname, session.user?.role)) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-9 w-9 animate-spin text-brand-600" />
+      </div>
+    );
   }
 
   return (

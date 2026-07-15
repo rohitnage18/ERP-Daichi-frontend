@@ -25,6 +25,7 @@ import {
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Plus, Search, Eye, RefreshCw, Loader2, Truck } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { canCreateOrder } from "@/lib/permissions";
 
 interface Order {
   id: string;
@@ -46,7 +47,7 @@ interface Order {
 
 export default function OrdersPage() {
   const { data: session } = useSession();
-  const canCreateOrder = session?.user?.role !== "ACCOUNT";
+  const showNewOrder = canCreateOrder(session?.user?.role);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -109,13 +110,13 @@ export default function OrdersPage() {
             )}
             Refresh
           </Button>
-          {canCreateOrder && (
-            <Link href="/dashboard/orders/new">
-              <Button>
+          {showNewOrder && (
+            <Button asChild>
+              <Link href="/dashboard/orders/new">
                 <Plus className="mr-2 h-4 w-4" />
                 New Order
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           )}
         </div>
       </div>
@@ -156,10 +157,10 @@ export default function OrdersPage() {
           ) : filteredOrders.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No orders found</p>
-              {canCreateOrder && (
-                <Link href="/dashboard/orders/new">
-                  <Button className="mt-4">Create Your First Order</Button>
-                </Link>
+              {showNewOrder && (
+                <Button className="mt-4" asChild>
+                  <Link href="/dashboard/orders/new">Create Your First Order</Link>
+                </Button>
               )}
             </div>
           ) : (

@@ -28,6 +28,7 @@ import {
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "PRODUCTION_LOGISTICS", "ACCOUNT"] },
   { name: "Field work", href: "/dashboard/field", icon: MapPinned, roles: ["SALES_MARKETING"] },
+  { name: "Field team", href: "/dashboard/field/team", icon: MapPinned, roles: ["MANAGEMENT_ADMIN"] },
   { name: "Dealers", href: "/dashboard/dealers", icon: Users, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "ACCOUNT"] },
   { name: "Products", href: "/dashboard/products", icon: Package, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "PRODUCTION_LOGISTICS", "ACCOUNT"] },
   { name: "Orders", href: "/dashboard/orders", icon: ShoppingCart, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "PRODUCTION_LOGISTICS", "ACCOUNT"] },
@@ -59,7 +60,10 @@ export function Sidebar() {
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-3 no-scrollbar">
         {filteredNavigation.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive =
+            item.href === "/dashboard"
+              ? pathname === "/dashboard"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.name}

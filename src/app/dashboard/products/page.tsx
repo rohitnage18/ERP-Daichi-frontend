@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Search, Package, RefreshCw, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { canCreateProduct } from "@/lib/permissions";
 import {
   Collapsible,
   CollapsibleContent,
@@ -51,7 +52,7 @@ interface GroupedProducts {
 
 export default function ProductsPage() {
   const { data: session } = useSession();
-  const canAddProduct = session?.user?.role !== "ACCOUNT";
+  const showAddProduct = canCreateProduct(session?.user?.role);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -156,13 +157,13 @@ export default function ProductsPage() {
             )}
             Refresh
           </Button>
-          {canAddProduct && (
-            <Link href="/dashboard/products/new">
-              <Button>
+          {showAddProduct && (
+            <Button asChild>
+              <Link href="/dashboard/products/new">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Product
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           )}
         </div>
       </div>
@@ -187,10 +188,10 @@ export default function ProductsPage() {
             <div className="text-center">
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">No products found</p>
-              {canAddProduct && (
-                <Link href="/dashboard/products/new">
-                  <Button className="mt-4">Add Your First Product</Button>
-                </Link>
+              {showAddProduct && (
+                <Button className="mt-4" asChild>
+                  <Link href="/dashboard/products/new">Add Your First Product</Link>
+                </Button>
               )}
             </div>
           </CardContent>
