@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" fill="none">
+  <text x="0" y="30" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" fill="#0f172a">Xenvolt</text>
+  <rect x="132" y="8" width="4" height="22" rx="2" fill="#15803d"/>
+  <rect x="142" y="14" width="4" height="16" rx="2" fill="#22c55e"/>
+  <rect x="152" y="10" width="4" height="20" rx="2" fill="#15803d"/>
+</svg>

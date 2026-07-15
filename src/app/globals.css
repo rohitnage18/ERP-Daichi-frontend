@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Xenvolt AgriFlow — design tokens (Figma-style consistency) */
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    /* Brand primary — deep agri green */
+    --primary: 158 64% 28%;
+    --primary-foreground: 144 100% 97%;
+    --secondary: 210 16% 93%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 16% 93%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 152 45% 94%;
+    --accent-foreground: 158 64% 22%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 158 64% 32%;
+    --radius: 0.625rem;
+    /* Extended */
+    --brand-50: 152 76% 96%;
+    --brand-100: 149 69% 90%;
+    --brand-500: 142 71% 36%;
+    --brand-600: 158 64% 28%;
+    --brand-700: 160 63% 22%;
+    --brand-900: 164 60% 14%;
+    --surface-elevated: 0 0% 100%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-semibold tracking-tight text-foreground;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    background: white !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .app-sidebar,
+  .app-header,
+  .app-back-bar,
+  .no-print {
+    display: none !important;
+  }
+
+  .app-main {
+    overflow: visible !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .invoice-print-page {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .tax-invoice-document {
+    max-width: none !important;
+    width: 100% !important;
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 10px !important;
+  }
+
+  .invoice-page {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .invoice-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  .tax-invoice-document table {
+    page-break-inside: auto;
+  }
+
+  .tax-invoice-document tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}
