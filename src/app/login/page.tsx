@@ -69,75 +69,67 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Side - Background Image */}
-      <div className="hidden lg:flex lg:w-1/2 relative">
-        {/* Background Image */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1625246333195-78d9c38ad449?q=80&w=2070&auto=format&fit=crop')`,
-          }}
+    <div className="min-h-screen flex bg-white">
+      {/* Left Side — branded hero */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/branding/login-hero-bg.svg')" }}
+          aria-hidden
         />
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(164,60%,12%)]/92 via-[hsl(158,64%,18%)]/88 to-[hsl(152,45%,22%)]/90" />
-        
-        {/* Content on Image */}
-        <div className="relative z-10 flex flex-col justify-between p-12 text-white">
-          <Logo inverted className="drop-shadow-sm" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#071F17]/75 via-[#0B2E22]/55 to-[#14532D]/65" />
 
-          {/* Middle Content */}
-          <div className="space-y-6">
-            <h2 className="text-4xl font-bold leading-tight">
-              Empowering Agriculture<br />
-              <span className="text-green-300">Across Maharashtra</span>
+        <div className="relative z-10 flex flex-col justify-between p-12 text-white">
+          <Logo inverted className="drop-shadow-md" />
+
+          <div className="space-y-6 max-w-lg">
+            <h2 className="text-4xl font-bold leading-tight text-white drop-shadow-sm">
+              Empowering Agriculture
+              <br />
+              <span className="text-emerald-200">Across Maharashtra</span>
             </h2>
-            <p className="text-lg text-green-100 max-w-md">
-              Streamline your dealer network, manage orders, track logistics, 
+            <p className="text-lg leading-relaxed text-white/90 drop-shadow-sm">
+              Streamline your dealer network, manage orders, track logistics,
               and grow your agricultural business with our comprehensive ERP solution.
             </p>
             <div className="flex items-center gap-8 pt-4">
               <div>
-                <p className="text-3xl font-bold">36+</p>
-                <p className="text-sm text-green-200">Districts Covered</p>
+                <p className="text-3xl font-bold text-white">36+</p>
+                <p className="text-sm text-white/80">Districts Covered</p>
               </div>
-              <div className="h-12 w-px bg-green-500/50" />
+              <div className="h-12 w-px bg-white/25" />
               <div>
-                <p className="text-3xl font-bold">500+</p>
-                <p className="text-sm text-green-200">Active Dealers</p>
+                <p className="text-3xl font-bold text-white">500+</p>
+                <p className="text-sm text-white/80">Active Dealers</p>
               </div>
-              <div className="h-12 w-px bg-green-500/50" />
+              <div className="h-12 w-px bg-white/25" />
               <div>
-                <p className="text-3xl font-bold">50+</p>
-                <p className="text-sm text-green-200">Products</p>
+                <p className="text-3xl font-bold text-white">50+</p>
+                <p className="text-sm text-white/80">Products</p>
               </div>
             </div>
           </div>
 
-          {/* Bottom */}
-          <div className="text-sm text-green-200">
+          <div className="text-sm text-white/70">
             © 2026 Daichi International. All rights reserved.
           </div>
         </div>
       </div>
 
-      {/* Right Side - Login Form */}
-      <div className="flex flex-1 items-center justify-center bg-gradient-to-br from-background to-muted/60 p-8">
-        <div className="w-full max-w-md space-y-8">
-          {/* Mobile Logo */}
-          <div className="mb-8 flex justify-center lg:hidden">
+      {/* Right Side — Login Form */}
+      <div className="flex flex-1 items-center justify-center bg-slate-50 p-6 sm:p-8">
+        <div className="w-full max-w-md space-y-8 rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl shadow-slate-200/50">
+          <div className="mb-2 flex justify-center lg:hidden">
             <Logo />
           </div>
 
-          {/* Header */}
           <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground">Welcome back</h2>
-            <p className="mt-2 text-muted-foreground">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h2>
+            <p className="mt-2 text-slate-600">
               Sign in to your account to continue
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-600 flex items-center gap-2">
               <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
@@ -147,10 +139,9 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="font-medium text-foreground">
+              <Label htmlFor="email" className="font-medium text-slate-800">
                 Email Address
               </Label>
               <div className="relative">
@@ -161,14 +152,14 @@ export default function LoginPage() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 border-border bg-card pl-10 focus-visible:border-primary focus-visible:ring-primary"
+                  className="h-12 border-slate-200 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-primary"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="font-medium text-foreground">
+              <Label htmlFor="password" className="font-medium text-slate-800">
                 Password
               </Label>
               <div className="relative">
@@ -179,7 +170,7 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 border-border bg-card pl-10 pr-10 focus-visible:border-primary focus-visible:ring-primary"
+                  className="h-12 border-slate-200 bg-white pl-10 pr-10 text-slate-900 placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-primary"
                   required
                 />
                 <button
@@ -211,25 +202,23 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-200" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-gradient-to-br from-background to-muted/60 px-4 text-muted-foreground">
+              <span className="bg-white px-4 text-slate-500">
                 Quick Demo Access
               </span>
             </div>
           </div>
 
-          {/* Quick Login Buttons */}
           <div className="grid grid-cols-4 gap-3">
             <button
               type="button"
               onClick={() => quickLogin("sales@xenvolt.com")}
               disabled={loading}
-              className="flex flex-col items-center gap-2 rounded-xl border-2 border-border bg-card p-3 transition-all hover:border-sky-500 hover:bg-sky-50 disabled:opacity-50"
+              className="flex flex-col items-center gap-2 rounded-xl border-2 border-slate-200 bg-white p-3 transition-all hover:border-sky-500 hover:bg-sky-50 disabled:opacity-50"
             >
               <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center">
                 <User className="h-4 w-4 text-blue-600" />
@@ -240,7 +229,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => quickLogin("admin@xenvolt.com")}
               disabled={loading}
-              className="flex flex-col items-center gap-2 rounded-xl border-2 border-border bg-card p-3 transition-all hover:border-violet-500 hover:bg-violet-50 disabled:opacity-50"
+              className="flex flex-col items-center gap-2 rounded-xl border-2 border-slate-200 bg-white p-3 transition-all hover:border-violet-500 hover:bg-violet-50 disabled:opacity-50"
             >
               <div className="h-9 w-9 rounded-full bg-purple-100 flex items-center justify-center">
                 <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -253,7 +242,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => quickLogin("logistics@xenvolt.com")}
               disabled={loading}
-              className="flex flex-col items-center gap-2 rounded-xl border-2 border-border bg-card p-3 transition-all hover:border-primary hover:bg-accent disabled:opacity-50"
+              className="flex flex-col items-center gap-2 rounded-xl border-2 border-slate-200 bg-white p-3 transition-all hover:border-primary hover:bg-accent disabled:opacity-50"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100">
                 <svg className="h-4 w-4 text-brand-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -266,7 +255,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => quickLogin("account@xenvolt.com")}
               disabled={loading}
-              className="flex flex-col items-center gap-2 rounded-xl border-2 border-border bg-card p-3 transition-all hover:border-amber-500 hover:bg-amber-50 disabled:opacity-50"
+              className="flex flex-col items-center gap-2 rounded-xl border-2 border-slate-200 bg-white p-3 transition-all hover:border-amber-500 hover:bg-amber-50 disabled:opacity-50"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100">
                 <svg className="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -277,8 +266,7 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Footer */}
-          <p className="text-center text-xs text-muted-foreground">
+          <p className="text-center text-xs text-slate-500">
             By signing in, you agree to our Terms of Service and Privacy Policy
           </p>
         </div>
