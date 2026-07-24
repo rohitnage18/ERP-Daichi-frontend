@@ -148,7 +148,7 @@ export default function InvoicesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="GENERATED">Generated</SelectItem>
+                <SelectItem value="DRAFT">Draft</SelectItem>
                 <SelectItem value="SENT">Sent</SelectItem>
                 <SelectItem value="PARTIALLY_PAID">Partially Paid</SelectItem>
                 <SelectItem value="PAID">Paid</SelectItem>

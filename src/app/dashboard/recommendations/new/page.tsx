@@ -31,6 +31,7 @@ export default function NewRecommendationPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<{ productId: string; reason: string }[]>([]);
   const [formData, setFormData] = useState({
+    activityType: "RECOMMENDATION",
     farmerName: "",
     contactNumber: "",
     village: "",
@@ -111,15 +112,42 @@ export default function NewRecommendationPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold">New Recommendation</h1>
+          <h1 className="text-3xl font-bold">New Sales Promotion Activity</h1>
           <p className="text-muted-foreground">
-            Create a product recommendation for farmer/shopkeeper
+            Log a recommendation, field work, demo, farmer meeting or campaign
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Activity Type</CardTitle>
+              <CardDescription>What kind of sales promotion activity is this?</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-w-sm">
+                <Label>Activity Type *</Label>
+                <Select
+                  value={formData.activityType}
+                  onValueChange={(value) => setFormData({ ...formData, activityType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select activity type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="RECOMMENDATION">Recommendation</SelectItem>
+                    <SelectItem value="FIELD_WORK">Field Work</SelectItem>
+                    <SelectItem value="DEMO">Demo</SelectItem>
+                    <SelectItem value="FARMER_MEETING">Farmer Meeting</SelectItem>
+                    <SelectItem value="CAMPAIGN">Campaign</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Farmer/Shopkeeper Details</CardTitle>
@@ -224,12 +252,11 @@ export default function NewRecommendationPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Issue Description *</Label>
+                <Label>Issue Description</Label>
                 <Textarea
                   value={formData.issueDescription}
                   onChange={(e) => setFormData({ ...formData, issueDescription: e.target.value })}
                   placeholder="Describe the issue in detail..."
-                  required
                 />
               </div>
               <div className="space-y-2">
@@ -249,12 +276,11 @@ export default function NewRecommendationPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Recommendation *</Label>
+                <Label>Recommendation / Notes</Label>
                 <Textarea
                   value={formData.recommendationText}
                   onChange={(e) => setFormData({ ...formData, recommendationText: e.target.value })}
-                  placeholder="Your recommendation..."
-                  required
+                  placeholder="Your recommendation or activity notes..."
                 />
               </div>
               <div className="space-y-2">

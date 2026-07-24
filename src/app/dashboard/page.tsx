@@ -103,15 +103,12 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [statsRes, ordersRes] = await Promise.all([
-        apiFetch("/api/dashboard/stats"),
-        apiFetch("/api/orders"),
-      ]);
-      if (cancelled) return;
-
       try {
+        const statsRes = await apiFetch("/api/dashboard/stats");
+        if (cancelled) return;
         const data = await statsRes.json();
-        if (data && data.stats) {
+
+        if (data?.stats) {
           const s = data.stats;
           setStats({
             totalDealers: s.totalDealers || 0,
@@ -142,23 +139,37 @@ export default function DashboardPage() {
         } else if (data) {
           setStats(data);
         }
-      } catch {
-        setStats(null);
-      }
 
-      try {
-        const ordersData = await ordersRes.json();
-        setRecentOrders(Array.isArray(ordersData) ? ordersData.slice(0, 5) : []);
+        if (Array.isArray(data?.recentOrders)) {
+          setRecentOrders(data.recentOrders.slice(0, 5));
+        }
+
+        if (role === "MANAGEMENT_ADMIN" && data?.pendingApprovals) {
+          setPendingDealers(
+            Array.isArray(data.pendingApprovals.dealers) ? data.pendingApprovals.dealers : []
+          );
+          setPendingOrders(
+            Array.isArray(data.pendingApprovals.orders) ? data.pendingApprovals.orders : []
+          );
+          setPendingCreditNotes(
+            Array.isArray(data.pendingApprovals.creditNotes)
+              ? data.pendingApprovals.creditNotes
+              : []
+          );
+        }
       } catch {
-        setRecentOrders([]);
+        if (!cancelled) setStats(null);
       } finally {
-        setLoadingOrders(false);
+        if (!cancelled) {
+          setLoadingOrders(false);
+          setLoadingPending(false);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [role]);
 
   const refreshPending = useCallback(async () => {
     if (role !== "MANAGEMENT_ADMIN") return;
@@ -167,7 +178,7 @@ export default function DashboardPage() {
       const [dRes, daichiRes, oRes, cnRes] = await Promise.all([
         apiFetch("/api/dealers?status=SUBMITTED"),
         apiFetch("/api/daichi-dealers?approvalStatus=PENDING"),
-        apiFetch("/api/orders?status=PENDING_APPROVAL"),
+        apiFetch("/api/orders?status=PENDING_APPROVAL&limit=10"),
         apiFetch("/api/credit-notes?status=PENDING_APPROVAL"),
       ]);
       const localDealers = await dRes.json();
@@ -191,10 +202,6 @@ export default function DashboardPage() {
       setLoadingPending(false);
     }
   }, [role]);
-
-  useEffect(() => {
-    refreshPending();
-  }, [refreshPending]);
 
   const approvalRows: { kind: "dealer" | "order" | "credit-note"; id: string; title: string; subtitle: string }[] = [];
   for (const d of pendingDealers) {
@@ -234,7 +241,7 @@ export default function DashboardPage() {
     const res = await apiFetch(`/api/orders/${id}/approve`, { method: "POST" });
     if (res.ok) {
       await refreshPending();
-      const r = await apiFetch("/api/orders");
+      const r = await apiFetch("/api/orders?limit=5");
       const data = await r.json();
       setRecentOrders(Array.isArray(data) ? data.slice(0, 5) : []);
     }

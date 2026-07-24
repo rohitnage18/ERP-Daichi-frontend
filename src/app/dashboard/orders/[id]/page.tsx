@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Truck, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Truck, FileText, Loader2, Pencil, Save, X } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 interface OrderDetail {
@@ -81,8 +82,19 @@ interface OrderDetail {
 export default function OrderDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { data: session } = useSession();
+  const role = session?.user?.role;
+  const canEditOrder = role === "MANAGEMENT_ADMIN";
+  const canGenerateInvoice = role === "ACCOUNT" || role === "MANAGEMENT_ADMIN";
+
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [editItems, setEditItems] = useState<{ productId: string; quantity: number }[]>([]);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [dispatchLoading, setDispatchLoading] = useState(false);
   const [dispatchError, setDispatchError] = useState<string | null>(null);
@@ -118,6 +130,78 @@ export default function OrderDetailPage() {
       console.error("Failed to fetch order:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startEdit = () => {
+    if (!order) return;
+    setEditItems(
+      order.items.map((it) => ({
+        productId: it.productId || it.id || "",
+        quantity: it.quantity,
+      }))
+    );
+    setActionError(null);
+    setEditMode(true);
+  };
+
+  const setEditQty = (productId: string, quantity: number) => {
+    setEditItems((prev) =>
+      prev.map((it) => (it.productId === productId ? { ...it, quantity } : it))
+    );
+  };
+
+  const handleSaveEdit = async () => {
+    if (!order?.id) return;
+    const items = editItems.filter((it) => it.productId && it.quantity > 0);
+    if (items.length === 0) {
+      setActionError("Order must have at least one item with quantity.");
+      return;
+    }
+    setSavingEdit(true);
+    setActionError(null);
+    try {
+      const res = await apiFetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      if (res.ok) {
+        setEditMode(false);
+        await fetchOrder();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setActionError(typeof body.error === "string" ? body.error : "Could not save changes.");
+      }
+    } catch {
+      setActionError("Network error. Try again.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!order?.id) return;
+    setGeneratingInvoice(true);
+    setActionError(null);
+    try {
+      const res = await apiFetch(`/api/invoices/from-order/${order.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const invoiceId = body.id || body._id;
+        router.push(invoiceId ? `/dashboard/finance/invoices/${invoiceId}` : "/dashboard/finance/invoices");
+      } else if (body.invoiceId) {
+        router.push(`/dashboard/finance/invoices/${body.invoiceId}`);
+      } else {
+        setActionError(typeof body.error === "string" ? body.error : "Could not generate invoice.");
+      }
+    } catch {
+      setActionError("Network error. Try again.");
+    } finally {
+      setGeneratingInvoice(false);
     }
   };
 
@@ -202,13 +286,52 @@ export default function OrderDetailPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {canEditOrder &&
+            (order.status === "PENDING_APPROVAL" || order.status === "DRAFT") &&
+            !editMode && (
+              <Button variant="outline" onClick={startEdit}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit Order
+              </Button>
+            )}
+          {editMode && (
+            <>
+              <Button onClick={handleSaveEdit} disabled={savingEdit}>
+                {savingEdit ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                Save Changes
+              </Button>
+              <Button variant="ghost" onClick={() => setEditMode(false)} disabled={savingEdit}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+            </>
+          )}
+          {canGenerateInvoice &&
+            order.status !== "DRAFT" &&
+            order.status !== "PENDING_APPROVAL" &&
+            order.status !== "CANCELLED" &&
+            !order.invoice &&
+            !order.invoiceId && (
+              <Button onClick={handleGenerateInvoice} disabled={generatingInvoice}>
+                {generatingInvoice ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="mr-2 h-4 w-4" />
+                )}
+                Generate Invoice
+              </Button>
+            )}
           {order.status === "APPROVED" && !order.dispatch && (
             <Button onClick={() => setDispatchOpen(true)}>
               <Truck className="mr-2 h-4 w-4" />
               Create Dispatch
             </Button>
           )}
-          {order.status === "DELIVERED" && (order.invoice || order.invoiceId) && (
+          {(order.invoice || order.invoiceId) && (
             <Button variant="outline" asChild>
               <Link href={`/dashboard/finance/invoices/${order.invoice?.id || order.invoiceId}`}>
                 <FileText className="mr-2 h-4 w-4" />
@@ -298,6 +421,12 @@ export default function OrderDetailPage() {
         </DialogContent>
       </Dialog>
 
+      {actionError && (
+        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {actionError}
+        </p>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <Card>
@@ -327,7 +456,28 @@ export default function OrderDetailPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        {item.quantity} {item.unitOfMeasure || item.product?.unitOfMeasure || ''}
+                        {editMode ? (
+                          <Input
+                            type="number"
+                            min="1"
+                            className="w-20 ml-auto"
+                            value={
+                              editItems.find(
+                                (e) => e.productId === (item.productId || item.id)
+                              )?.quantity ?? item.quantity
+                            }
+                            onChange={(e) =>
+                              setEditQty(
+                                item.productId || item.id || "",
+                                parseInt(e.target.value) || 0
+                              )
+                            }
+                          />
+                        ) : (
+                          <>
+                            {item.quantity} {item.unitOfMeasure || item.product?.unitOfMeasure || ''}
+                          </>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {formatCurrency(item.unitPrice)}

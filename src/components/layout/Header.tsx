@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,8 +12,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Bell, LogOut, User, ChevronDown, ClipboardList } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Bell, LogOut, User, ChevronDown, ClipboardList, Menu } from "lucide-react";
+import { clearTokenCache } from "@/lib/api";
+import { useNav } from "./NavContext";
+import { canApprove } from "@/lib/permissions";
+
 const roleLabels: Record<string, string> = {
   SALES_MARKETING: "Sales & Marketing",
   MANAGEMENT_ADMIN: "Management / Admin",
@@ -25,7 +27,8 @@ const roleLabels: Record<string, string> = {
 export function Header() {
   const { data: session } = useSession();
   const user = session?.user;
-  const [notifOpen, setNotifOpen] = useState(false);
+  const { toggleMobile } = useNav();
+  const isAdmin = canApprove(user?.role);
 
   const getInitials = (name: string) => {
     return name
@@ -36,55 +39,64 @@ export function Header() {
       .slice(0, 2);
   };
 
+  const handleSignOut = () => {
+    clearTokenCache();
+    signOut({ callbackUrl: "/login" });
+  };
+
   return (
-    <header className="app-header flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-4 shadow-sm sm:px-6 print:hidden">
-      <div className="flex min-w-0 items-center gap-3">
+    <header className="app-header flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 shadow-sm sm:h-16 sm:px-6 print:hidden">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="shrink-0 md:hidden"
+          onClick={toggleMobile}
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
         <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-4">
-          <h2 className="truncate text-base font-semibold tracking-tight text-foreground sm:text-lg">
+          <h2 className="truncate text-sm font-semibold tracking-tight text-foreground sm:text-lg">
             Welcome back, {user?.name?.split(" ")[0]}
           </h2>
           {user?.zoneName && (
-            <Badge variant="secondary" className="w-fit border border-border bg-muted/80 font-medium">
+            <span className="hidden w-fit rounded-md border border-border bg-muted/80 px-2 py-0.5 text-xs font-medium sm:inline-flex">
               {user.zoneName} Zone
-            </Badge>
+            </span>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-0.5 text-[10px] font-semibold text-destructive-foreground">
-                3
-              </span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-72">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild onClick={() => setNotifOpen(false)}>
-              <Link href="/dashboard/approvals" className="flex cursor-pointer items-center gap-2">
-                <ClipboardList className="h-4 w-4 text-brand-600" />
-                <span>Pending approvals need your attention</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild onClick={() => setNotifOpen(false)}>
-              <Link href="/dashboard/logistics" className="cursor-pointer">
-                Orders ready for dispatch
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild onClick={() => setNotifOpen(false)}>
-              <Link href="/dashboard/finance/invoices" className="cursor-pointer">
-                Invoices due for follow-up
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="flex items-center gap-1 sm:gap-2">
+        {isAdmin && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative text-muted-foreground hover:text-foreground"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/approvals" className="flex cursor-pointer items-center gap-2">
+                  <ClipboardList className="h-4 w-4 text-brand-600" />
+                  <span>Review pending approvals</span>
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 rounded-lg px-2">
-              <Avatar className="h-9 w-9 border border-border">
+              <Avatar className="h-8 w-8 border border-border sm:h-9 sm:w-9">
                 <AvatarFallback className="bg-brand-600 text-sm font-semibold text-primary-foreground">
                   {user?.name ? getInitials(user.name) : "U"}
                 </AvatarFallback>
@@ -110,7 +122,7 @@ export function Header() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={handleSignOut}
             >
               <LogOut className="mr-2 h-4 w-4" />
               Sign out

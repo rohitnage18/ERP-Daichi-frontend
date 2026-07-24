@@ -28,14 +28,14 @@ interface InvoiceOption {
 }
 
 const TYPE_OPTIONS = [
-  { value: "SALES_RETURN", label: "Sales Return" },
-  { value: "RATE_DIFFERENCE", label: "Rate Difference" },
-  { value: "QUALITY_ISSUE", label: "Quality Issue" },
-  { value: "SCHEME_DISCOUNT", label: "Scheme / Discount" },
+  { value: "FREIGHT", label: "Freight / Transport" },
+  { value: "INTEREST", label: "Interest / Late Fee" },
+  { value: "PRICE_DIFFERENCE", label: "Price Difference" },
+  { value: "SHORT_PAYMENT", label: "Short Payment Recovery" },
   { value: "OTHER", label: "Other" },
 ];
 
-export default function NewCreditNotePage() {
+export default function NewDebitNotePage() {
   const router = useRouter();
   const [invoices, setInvoices] = useState<InvoiceOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,8 +43,7 @@ export default function NewCreditNotePage() {
   const [error, setError] = useState("");
   const [form, setForm] = useState({
     invoiceId: "",
-    basis: "PAYMENT",
-    type: "SALES_RETURN",
+    type: "FREIGHT",
     amount: "",
     reason: "",
   });
@@ -96,22 +95,17 @@ export default function NewCreditNotePage() {
       setError("Enter a valid amount.");
       return;
     }
-    if (selectedInvoice && amt > selectedInvoice.totalAmount + 0.01) {
-      setError("Amount cannot exceed the invoice total.");
-      return;
-    }
     if (!form.reason.trim()) {
       setError("Please provide a reason.");
       return;
     }
     setSubmitting(true);
     try {
-      const res = await apiFetch("/api/credit-notes", {
+      const res = await apiFetch("/api/debit-notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           invoiceId: form.invoiceId,
-          basis: form.basis,
           type: form.type,
           amount: amt,
           reason: form.reason.trim(),
@@ -119,10 +113,10 @@ export default function NewCreditNotePage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setError(err.error || "Could not create credit note.");
+        setError(err.error || "Could not create debit note.");
         return;
       }
-      router.push("/dashboard/finance/credit-notes");
+      router.push("/dashboard/finance/debit-notes");
     } catch {
       setError("Network error. Try again.");
     } finally {
@@ -134,16 +128,16 @@ export default function NewCreditNotePage() {
     <div className="mx-auto max-w-lg space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/dashboard/finance/credit-notes">
+          <Link href="/dashboard/finance/debit-notes">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">New credit note</h1>
+        <h1 className="text-2xl font-bold tracking-tight">New debit note</h1>
       </div>
 
       <Card className="border-border/80 shadow-card">
         <CardHeader>
-          <CardTitle>Credit note details</CardTitle>
+          <CardTitle>Debit note details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
@@ -156,14 +150,7 @@ export default function NewCreditNotePage() {
             <Label>Invoice</Label>
             <Select
               value={form.invoiceId}
-              onValueChange={(v) => {
-                const inv = invoices.find((i) => i.id === v);
-                setForm((f) => ({
-                  ...f,
-                  invoiceId: v,
-                  amount: inv ? String(inv.balanceAmount || inv.totalAmount) : f.amount,
-                }));
-              }}
+              onValueChange={(v) => setForm((f) => ({ ...f, invoiceId: v }))}
               disabled={loading}
             >
               <SelectTrigger>
@@ -183,22 +170,6 @@ export default function NewCreditNotePage() {
                 {formatCurrency(selectedInvoice.balanceAmount)}
               </p>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label>Basis</Label>
-            <Select
-              value={form.basis}
-              onValueChange={(v) => setForm((f) => ({ ...f, basis: v }))}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="PAYMENT">Payment based (financial adjustment)</SelectItem>
-                <SelectItem value="PRODUCT">Product based (goods return)</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-2">
@@ -232,24 +203,24 @@ export default function NewCreditNotePage() {
           <div className="space-y-2">
             <Label>Reason</Label>
             <Textarea
-              placeholder="Describe the reason for this credit note"
+              placeholder="Describe the reason for this debit note"
               value={form.reason}
               onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
             />
           </div>
 
           <p className="text-xs text-muted-foreground">
-            The credit note is created as <strong>Pending approval</strong>. Once management
-            approves it, the amount is deducted from the invoice balance automatically.
+            The debit note is created as <strong>Pending approval</strong>. Once management
+            approves it, the amount is added to the invoice balance automatically.
           </p>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" asChild>
-              <Link href="/dashboard/finance/credit-notes">Cancel</Link>
+              <Link href="/dashboard/finance/debit-notes">Cancel</Link>
             </Button>
             <Button onClick={handleSubmit} disabled={submitting}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create credit note
+              Create debit note
             </Button>
           </div>
         </CardContent>

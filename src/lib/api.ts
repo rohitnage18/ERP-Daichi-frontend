@@ -22,6 +22,8 @@ function clearTokenCache() {
   cachedToken = null;
 }
 
+export { clearTokenCache };
+
 /** Wait briefly for NextAuth session/token — avoids race 401s on page load. */
 async function resolveAccessToken(): Promise<string | null> {
   if (cachedToken && Date.now() - cachedToken.at < TOKEN_CACHE_MS) {

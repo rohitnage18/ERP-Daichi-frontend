@@ -243,7 +243,14 @@ export default function ProductsPage() {
                             <TableCell className="font-medium font-mono text-xs">
                               {product.productCode}
                             </TableCell>
-                            <TableCell className="font-medium">{product.name}</TableCell>
+                            <TableCell className="font-medium">
+                              <Link
+                                href={`/dashboard/products/${product.id}`}
+                                className="text-brand-700 hover:underline"
+                              >
+                                {product.name}
+                              </Link>
+                            </TableCell>
                             <TableCell className="font-mono text-xs">{product.hsnCode || "—"}</TableCell>
                             <TableCell className="text-sm">{product.packingSize ?? "—"}</TableCell>
                             <TableCell className="text-xs text-muted-foreground">{product.lotSize ?? "—"}</TableCell>

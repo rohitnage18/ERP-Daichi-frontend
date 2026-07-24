@@ -93,6 +93,20 @@ interface PendingCreditNote {
   createdByName?: string;
 }
 
+interface PendingDebitNote {
+  id: string;
+  debitNoteNumber: string;
+  debitNoteDate: string;
+  type: string;
+  reason: string;
+  amount: number;
+  status: string;
+  dealerName?: string;
+  invoiceNumber?: string;
+  dealer?: { firmName: string };
+  invoice?: { invoiceNumber: string };
+}
+
 const CREDIT_NOTE_TYPE_LABELS: Record<string, string> = {
   SALES_RETURN: "Sales Return",
   RATE_DIFFERENCE: "Rate Difference",
@@ -101,10 +115,19 @@ const CREDIT_NOTE_TYPE_LABELS: Record<string, string> = {
   OTHER: "Other",
 };
 
+const DEBIT_NOTE_TYPE_LABELS: Record<string, string> = {
+  FREIGHT: "Freight / Transport",
+  INTEREST: "Interest / Late Fee",
+  PRICE_DIFFERENCE: "Price Difference",
+  SHORT_PAYMENT: "Short Payment Recovery",
+  OTHER: "Other",
+};
+
 export default function ApprovalsPage() {
   const [pendingDealers, setPendingDealers] = useState<PendingDealer[]>([]);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
   const [pendingCreditNotes, setPendingCreditNotes] = useState<PendingCreditNote[]>([]);
+  const [pendingDebitNotes, setPendingDebitNotes] = useState<PendingDebitNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [rejectDialog, setRejectDialog] = useState<{
@@ -131,11 +154,12 @@ export default function ApprovalsPage() {
 
   const fetchPendingItems = async () => {
     try {
-      const [dealersRes, daichiRes, ordersRes, creditNotes] = await Promise.all([
+      const [dealersRes, daichiRes, ordersRes, creditNotes, debitNotes] = await Promise.all([
         apiFetch("/api/dealers?status=SUBMITTED"),
         apiFetch("/api/daichi-dealers?approvalStatus=PENDING"),
         apiFetch("/api/orders?status=PENDING_APPROVAL"),
         apiFetchJsonArray<PendingCreditNote>("/api/credit-notes?status=PENDING_APPROVAL"),
+        apiFetchJsonArray<PendingDebitNote>("/api/debit-notes?status=PENDING_APPROVAL"),
       ]);
       const localDealers = await dealersRes.json();
       const daichiDealers = await daichiRes.json();
@@ -176,11 +200,13 @@ export default function ApprovalsPage() {
       setPendingDealers(mergedDealers);
       setPendingOrders(Array.isArray(orders) ? orders : []);
       setPendingCreditNotes(creditNotes);
+      setPendingDebitNotes(debitNotes);
     } catch (error) {
       console.error("Failed to fetch pending items:", error);
       setPendingDealers([]);
       setPendingOrders([]);
       setPendingCreditNotes([]);
+      setPendingDebitNotes([]);
     } finally {
       setLoading(false);
     }
@@ -258,8 +284,26 @@ export default function ApprovalsPage() {
     }
   };
 
+  const handleApproveDebitNote = async (id: string) => {
+    setActionLoading(true);
+    try {
+      const res = await apiFetch(`/api/debit-notes/${id}/approve`, { method: "POST" });
+      if (res.ok) fetchPendingItems();
+      else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Approval failed");
+      }
+    } catch (error) {
+      console.error("Approval failed:", error);
+      alert("Approval failed");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const rejectApiPath = (type: string, id: string, source?: string) => {
     if (type === "credit-note") return `/api/credit-notes/${id}/reject`;
+    if (type === "debit-note") return `/api/debit-notes/${id}/reject`;
     if (type === "dealer" && source === "daichi") return `/api/daichi-dealers/${id}/reject`;
     return `/api/${type}s/${id}/reject`;
   };
@@ -338,6 +382,7 @@ export default function ApprovalsPage() {
           <TabsTrigger value="dealers">Dealers ({pendingDealers.length})</TabsTrigger>
           <TabsTrigger value="orders">Orders ({pendingOrders.length})</TabsTrigger>
           <TabsTrigger value="credit-notes">Credit Notes ({pendingCreditNotes.length})</TabsTrigger>
+          <TabsTrigger value="debit-notes">Debit Notes ({pendingDebitNotes.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dealers">
@@ -560,6 +605,82 @@ export default function ApprovalsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="debit-notes">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Debit Note Approvals</CardTitle>
+              <CardDescription>
+                Review debit notes submitted by accounts — approving adds the amount to the invoice
+                balance
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : pendingDebitNotes.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No pending debit note approvals</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>DN Number</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Dealer</TableHead>
+                      <TableHead>Invoice</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingDebitNotes.map((dn) => (
+                      <TableRow key={dn.id}>
+                        <TableCell className="font-medium">{dn.debitNoteNumber}</TableCell>
+                        <TableCell>{formatDate(dn.debitNoteDate)}</TableCell>
+                        <TableCell>{dn.dealerName || dn.dealer?.firmName || "—"}</TableCell>
+                        <TableCell>{dn.invoiceNumber || dn.invoice?.invoiceNumber || "—"}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {DEBIT_NOTE_TYPE_LABELS[dn.type] || dn.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">{dn.reason}</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(dn.amount)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveDebitNote(dn.id)}
+                              disabled={actionLoading}
+                            >
+                              <CheckCircle className="mr-1 h-4 w-4" />
+                              Approve
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-600"
+                              onClick={() =>
+                                setRejectDialog({ open: true, type: "debit-note", id: dn.id })
+                              }
+                              disabled={actionLoading}
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Approve Dealer Dialog with Credit Grade */}
@@ -629,7 +750,9 @@ export default function ApprovalsPage() {
                 ? "Dealer"
                 : rejectDialog.type === "credit-note"
                   ? "Credit Note"
-                  : "Order"}
+                  : rejectDialog.type === "debit-note"
+                    ? "Debit Note"
+                    : "Order"}
             </DialogTitle>
             <DialogDescription>Please provide a reason for rejection.</DialogDescription>
           </DialogHeader>

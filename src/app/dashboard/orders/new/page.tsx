@@ -50,6 +50,9 @@ interface Product {
   basePrice: number;
   gstRate: number;
   unitOfMeasure: string;
+  packingSize?: string;
+  alternateUnit?: string;
+  unitsPerAlternate?: number;
 }
 
 interface OrderItem {
@@ -60,6 +63,16 @@ interface OrderItem {
   gstRate: number;
   taxAmount: number;
   totalAmount: number;
+  packingSize?: string;
+  alternateUnit?: string;
+  unitsPerAlternate?: number;
+}
+
+function caseLabel(item: OrderItem): string | null {
+  if (!item.unitsPerAlternate || item.unitsPerAlternate <= 0) return null;
+  const cases = item.quantity / item.unitsPerAlternate;
+  if (!Number.isInteger(cases) || cases <= 0) return null;
+  return `${cases} ${item.alternateUnit || "Case"}`;
 }
 
 export default function NewOrderPage() {
@@ -128,6 +141,9 @@ export default function NewOrderPage() {
         gstRate: product.gstRate,
         taxAmount,
         totalAmount,
+        packingSize: product.packingSize,
+        alternateUnit: product.alternateUnit,
+        unitsPerAlternate: product.unitsPerAlternate,
       },
     ]);
   };
@@ -393,7 +409,8 @@ export default function NewOrderPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Product</TableHead>
-                      <TableHead className="w-[100px]">Quantity</TableHead>
+                      <TableHead>Packing</TableHead>
+                      <TableHead className="w-[110px]">Quantity</TableHead>
                       <TableHead className="text-right">Unit Price</TableHead>
                       <TableHead className="text-right">Tax</TableHead>
                       <TableHead className="text-right">Total</TableHead>
@@ -404,6 +421,14 @@ export default function NewOrderPage() {
                     {items.map((item) => (
                       <TableRow key={item.productId}>
                         <TableCell>{item.productName}</TableCell>
+                        <TableCell className="text-sm">
+                          {item.packingSize || "—"}
+                          {item.unitsPerAlternate ? (
+                            <span className="block text-xs text-muted-foreground">
+                              1 {item.alternateUnit || "Case"} = {item.unitsPerAlternate}
+                            </span>
+                          ) : null}
+                        </TableCell>
                         <TableCell>
                           <Input
                             type="number"
@@ -414,6 +439,11 @@ export default function NewOrderPage() {
                             }
                             className="w-20"
                           />
+                          {caseLabel(item) && (
+                            <span className="mt-1 block text-xs text-brand-700">
+                              = {caseLabel(item)}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(item.unitPrice)}

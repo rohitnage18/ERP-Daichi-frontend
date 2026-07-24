@@ -23,9 +23,19 @@ export default function DailyLogPage() {
     summary: "",
     dealersVisited: "0",
     ordersDiscussed: "0",
-    kilometersTraveled: "",
+    openingKm: "",
+    closingKm: "",
+    salesAmount: "",
+    collectionAmount: "",
+    newDealersAppointed: "0",
+    achievementNotes: "",
     expensesSummary: "",
   });
+
+  const distanceTraveled =
+    form.openingKm !== "" && form.closingKm !== ""
+      ? Math.max(0, Number(form.closingKm) - Number(form.openingKm))
+      : null;
 
   const captureLocation = () => {
     if (!navigator.geolocation) {
@@ -58,7 +68,13 @@ export default function DailyLogPage() {
           summary: form.summary,
           dealersVisited: parseInt(form.dealersVisited, 10) || 0,
           ordersDiscussed: parseInt(form.ordersDiscussed, 10) || 0,
-          kilometersTraveled: form.kilometersTraveled ? parseFloat(form.kilometersTraveled) : null,
+          openingKm: form.openingKm ? parseFloat(form.openingKm) : null,
+          closingKm: form.closingKm ? parseFloat(form.closingKm) : null,
+          kilometersTraveled: distanceTraveled,
+          salesAmount: form.salesAmount ? parseFloat(form.salesAmount) : null,
+          collectionAmount: form.collectionAmount ? parseFloat(form.collectionAmount) : null,
+          newDealersAppointed: parseInt(form.newDealersAppointed, 10) || 0,
+          achievementNotes: form.achievementNotes || null,
           expensesSummary: form.expensesSummary || null,
           odometerPhoto,
           latitude: location?.lat,
@@ -132,10 +148,21 @@ export default function DailyLogPage() {
                 <Input id="orders" type="number" min={0} className="h-12 text-lg" value={form.ordersDiscussed} onChange={(e) => setForm({ ...form, ordersDiscussed: e.target.value })} />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="km">Kilometers traveled *</Label>
-              <Input id="km" type="number" min={0} step="0.1" required className="h-12 text-lg" placeholder="Enter KM from odometer" value={form.kilometersTraveled} onChange={(e) => setForm({ ...form, kilometersTraveled: e.target.value })} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="openingKm">Opening KM *</Label>
+                <Input id="openingKm" type="number" min={0} step="0.1" required className="h-12 text-lg" placeholder="Start reading" value={form.openingKm} onChange={(e) => setForm({ ...form, openingKm: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="closingKm">Closing KM *</Label>
+                <Input id="closingKm" type="number" min={0} step="0.1" required className="h-12 text-lg" placeholder="End reading" value={form.closingKm} onChange={(e) => setForm({ ...form, closingKm: e.target.value })} />
+              </div>
             </div>
+            {distanceTraveled !== null && (
+              <p className="text-sm font-medium text-brand-700">
+                Distance traveled today: {distanceTraveled} km
+              </p>
+            )}
             <PhotoCaptureField
               label="Odometer photo (for verification)"
               hint="Take a clear photo of your odometer reading or upload from gallery"
@@ -146,6 +173,27 @@ export default function DailyLogPage() {
               <MapPin className="mr-2 h-5 w-5" />
               {location ? "Location captured ✓" : locating ? "Getting GPS..." : "Capture my location"}
             </Button>
+            <div className="space-y-4 rounded-lg border bg-slate-50 p-4">
+              <p className="text-sm font-semibold text-slate-700">Daily Achievement Report</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="salesAmount">Sales booked (₹)</Label>
+                  <Input id="salesAmount" type="number" min={0} step="0.01" className="h-12 text-lg" placeholder="0" value={form.salesAmount} onChange={(e) => setForm({ ...form, salesAmount: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="collectionAmount">Collection (₹)</Label>
+                  <Input id="collectionAmount" type="number" min={0} step="0.01" className="h-12 text-lg" placeholder="0" value={form.collectionAmount} onChange={(e) => setForm({ ...form, collectionAmount: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newDealers">New dealers appointed</Label>
+                <Input id="newDealers" type="number" min={0} className="h-12 text-lg" value={form.newDealersAppointed} onChange={(e) => setForm({ ...form, newDealersAppointed: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="achievementNotes">Achievements / highlights</Label>
+                <Textarea id="achievementNotes" rows={3} className="text-base" placeholder="Key achievements, closures, targets met..." value={form.achievementNotes} onChange={(e) => setForm({ ...form, achievementNotes: e.target.value })} />
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="expenses">Expenses (notes)</Label>
               <Input id="expenses" className="h-12 text-base" placeholder="Fuel, meals, etc." value={form.expensesSummary} onChange={(e) => setForm({ ...form, expensesSummary: e.target.value })} />

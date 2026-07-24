@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { HeaderBackButton } from "@/components/shared/BackButton";
+import { NavProvider } from "@/components/layout/NavContext";
 import { Loader2 } from "lucide-react";
 import { isPathBlockedForRole } from "@/lib/permissions";
 
@@ -45,7 +46,6 @@ export default function DashboardLayout({
     return null;
   }
 
-  // Avoid flashing blocked pages before redirect
   if (isPathBlockedForRole(pathname, session.user?.role)) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -55,15 +55,17 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-muted/40 print:block print:h-auto print:bg-white">
-      <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden print:block print:overflow-visible">
-        <Header />
-        <HeaderBackButton />
-        <main className="app-main flex-1 overflow-y-auto bg-gradient-to-b from-background to-muted/30 p-6 print:overflow-visible print:bg-white print:p-0">
-          {children}
-        </main>
+    <NavProvider>
+      <div className="flex h-screen bg-muted/40 print:block print:h-auto print:bg-white">
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden print:block print:overflow-visible">
+          <Header />
+          <HeaderBackButton />
+          <main className="app-main flex-1 overflow-y-auto bg-gradient-to-b from-background to-muted/30 p-3 sm:p-4 md:p-6 print:overflow-visible print:bg-white print:p-0">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </NavProvider>
   );
 }

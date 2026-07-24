@@ -20,6 +20,7 @@ import { formatDate } from "@/lib/utils";
 
 interface Recommendation {
   id: string;
+  activityType?: string;
   farmerName: string;
   contactNumber: string;
   cropType: string;
@@ -37,6 +38,14 @@ const issueTypeLabels: Record<string, { label: string; color: string }> = {
   NUTRITIONAL: { label: "Nutritional", color: "bg-green-100 text-green-800" },
   PEST_DISEASE: { label: "Pest/Disease", color: "bg-red-100 text-red-800" },
   GENERAL: { label: "General", color: "bg-gray-100 text-gray-800" },
+};
+
+const activityTypeLabels: Record<string, { label: string; color: string }> = {
+  RECOMMENDATION: { label: "Recommendation", color: "bg-emerald-100 text-emerald-800" },
+  FIELD_WORK: { label: "Field Work", color: "bg-amber-100 text-amber-800" },
+  DEMO: { label: "Demo", color: "bg-indigo-100 text-indigo-800" },
+  FARMER_MEETING: { label: "Farmer Meeting", color: "bg-purple-100 text-purple-800" },
+  CAMPAIGN: { label: "Campaign", color: "bg-pink-100 text-pink-800" },
 };
 
 export default function RecommendationsPage() {
@@ -72,15 +81,15 @@ export default function RecommendationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Farmer Recommendations</h1>
+          <h1 className="text-3xl font-bold">Sales Promotion Activity</h1>
           <p className="text-muted-foreground">
-            Product recommendations for farmers and shopkeepers
+            Field work, recommendations, demos, farmer meetings and campaigns
           </p>
         </div>
         <Link href="/dashboard/recommendations/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            New Recommendation
+            New Activity
           </Button>
         </Link>
       </div>
@@ -115,6 +124,7 @@ export default function RecommendationsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead>Activity</TableHead>
                   <TableHead>Farmer Name</TableHead>
                   <TableHead>Crop</TableHead>
                   <TableHead>Issue Type</TableHead>
@@ -129,6 +139,16 @@ export default function RecommendationsPage() {
                 {filteredRecommendations.map((rec) => (
                   <TableRow key={rec.id}>
                     <TableCell>{formatDate(rec.createdAt)}</TableCell>
+                    <TableCell>
+                      <Badge
+                        className={
+                          activityTypeLabels[rec.activityType || "RECOMMENDATION"]?.color || ""
+                        }
+                      >
+                        {activityTypeLabels[rec.activityType || "RECOMMENDATION"]?.label ||
+                          rec.activityType}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium">{rec.farmerName}</p>

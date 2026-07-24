@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, User, Lock, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/branding/Logo";
+import { wakeApi } from "@/lib/keepalive";
 
 function formatSignInError(error: string): string {
   const decoded = decodeURIComponent(error);
@@ -37,6 +38,11 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Wake Render free-tier while user types credentials
+  useEffect(() => {
+    wakeApi();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +101,10 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('/branding/login-hero-bg.svg')" }}
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg, #071F17 0%, #0B2E22 45%, #14532D 100%), url('/branding/login-hero-bg.svg')",
+          }}
           aria-hidden
         />
         <div className="absolute inset-0 bg-gradient-to-br from-[#071F17]/75 via-[#0B2E22]/55 to-[#14532D]/65" />

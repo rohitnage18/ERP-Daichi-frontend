@@ -56,9 +56,21 @@ interface DealerOption {
   dealerCode: string | null;
 }
 
+interface OpenInvoice {
+  id: string;
+  invoiceNumber: string;
+  balanceAmount: number;
+}
+
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [dealers, setDealers] = useState<DealerOption[]>([]);
+  const [openInvoices, setOpenInvoices] = useState<OpenInvoice[]>([]);
+  const [outstanding, setOutstanding] = useState<{
+    totalOutstanding: number;
+    overdueOutstanding: number;
+    openInvoices: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -66,6 +78,7 @@ export default function PaymentsPage() {
   const [formError, setFormError] = useState("");
   const [form, setForm] = useState({
     dealerId: "",
+    invoiceId: "",
     amount: "",
     paymentMode: "",
     referenceNumber: "",
@@ -84,6 +97,37 @@ export default function PaymentsPage() {
     }
   };
 
+  const fetchOutstanding = async () => {
+    try {
+      const res = await apiFetch("/api/payments/outstanding");
+      if (res.ok) setOutstanding(await res.json());
+    } catch (error) {
+      console.error("Failed to fetch outstanding:", error);
+    }
+  };
+
+  const fetchOpenInvoices = async (dealerId: string) => {
+    if (!dealerId) {
+      setOpenInvoices([]);
+      return;
+    }
+    const data = await apiFetchJsonArray<{
+      id?: string;
+      _id?: string;
+      invoiceNumber?: string;
+      balanceAmount?: number;
+    }>(`/api/invoices?dealerId=${encodeURIComponent(dealerId)}`);
+    setOpenInvoices(
+      data
+        .filter((inv) => (inv.balanceAmount ?? 0) > 0)
+        .map((inv) => ({
+          id: inv.id || inv._id || "",
+          invoiceNumber: inv.invoiceNumber || "",
+          balanceAmount: inv.balanceAmount ?? 0,
+        }))
+    );
+  };
+
   const fetchDealers = async () => {
     const data = await apiFetchJsonArray<{ id?: string; _id?: string; firmName?: string; externalId?: string }>(
       "/api/daichi-dealers"
@@ -99,6 +143,7 @@ export default function PaymentsPage() {
 
   useEffect(() => {
     fetchPayments();
+    fetchOutstanding();
   }, []);
 
   useEffect(() => {
@@ -107,6 +152,12 @@ export default function PaymentsPage() {
       fetchDealers();
     }
   }, [dialogOpen]);
+
+  useEffect(() => {
+    fetchOpenInvoices(form.dealerId);
+    setForm((f) => ({ ...f, invoiceId: "" }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.dealerId]);
 
   const handleRecordPayment = async () => {
     setFormError("");
@@ -121,6 +172,7 @@ export default function PaymentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           dealerId: form.dealerId,
+          invoiceId: form.invoiceId || undefined,
           paymentMode: form.paymentMode,
           amount: Number(form.amount),
           referenceNumber: form.referenceNumber || undefined,
@@ -135,12 +187,13 @@ export default function PaymentsPage() {
       setDialogOpen(false);
       setForm({
         dealerId: "",
+        invoiceId: "",
         amount: "",
         paymentMode: "",
         referenceNumber: "",
         paymentDate: new Date().toISOString().slice(0, 10),
       });
-      await fetchPayments();
+      await Promise.all([fetchPayments(), fetchOutstanding()]);
     } catch {
       setFormError("Network error. Try again.");
     } finally {
@@ -200,6 +253,33 @@ export default function PaymentsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Apply to invoice (optional)</Label>
+                <Select
+                  value={form.invoiceId || "AUTO"}
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, invoiceId: v === "AUTO" ? "" : v }))
+                  }
+                  disabled={!form.dealerId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Auto (oldest dues first)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AUTO">Auto — oldest dues first</SelectItem>
+                    {openInvoices.map((inv) => (
+                      <SelectItem key={inv.id} value={inv.id}>
+                        {inv.invoiceNumber} · {formatCurrency(inv.balanceAmount)} due
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.dealerId && openInvoices.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    No open invoices — payment will be kept on account.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Amount (₹)</Label>
@@ -290,8 +370,14 @@ export default function PaymentsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Demo outstanding</p>
-                <p className="text-2xl font-bold tabular-nums text-amber-700">{formatCurrency(850000)}</p>
+                <p className="text-sm text-muted-foreground">Outstanding</p>
+                <p className="text-2xl font-bold tabular-nums text-amber-700">
+                  {formatCurrency(outstanding?.totalOutstanding ?? 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {outstanding?.openInvoices ?? 0} open ·{" "}
+                  {formatCurrency(outstanding?.overdueOutstanding ?? 0)} overdue
+                </p>
               </div>
               <CreditCard className="h-8 w-8 text-amber-600" />
             </div>
