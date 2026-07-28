@@ -6,8 +6,7 @@ import { formatInvoiceAmount, formatInvoiceDate } from "@/lib/utils";
 import {
   DAICHI_SUPPLIER,
   ITEMS_PER_INVOICE_PAGE,
-  formatCaseLabel,
-  invoiceUnitOfMeasure,
+  resolveUnitsPerCase,
   numberToWords,
 } from "@/lib/invoice-utils";
 
@@ -24,16 +23,22 @@ type NormalizedItem = {
   unitsPerAlternate?: number;
   alternateUnit?: string;
   taxableValue: number;
-  unitOfMeasure: string;
+  /** Rate unit shown in "per" — Tally uses Nos for product invoices */
+  perUnit: string;
   unitPrice: number;
   quantity: number;
   hsnCode: string;
-};
-
-type TaxGroup = {
   cgstRate: number;
   sgstRate: number;
+  cgstAmount: number;
+  sgstAmount: number;
+};
+
+type HsnTaxRow = {
+  hsnCode: string;
   taxable: number;
+  cgstRate: number;
+  sgstRate: number;
   cgst: number;
   sgst: number;
 };
@@ -47,6 +52,23 @@ type PageSlice = {
 
 const cellClass = "border border-black p-[3px_4px] align-top";
 const thClass = "border border-black bg-[#f0f0f0] p-[3px_4px] font-bold text-center";
+const metaLabel = "text-[9px] leading-tight";
+const metaValue = "text-[10px] font-semibold leading-tight";
+
+/** Tally-style Alt. Quantity e.g. "2 Case" */
+function formatAltQuantity(
+  quantity: number,
+  lotSize?: string,
+  unitsPerAlternate?: number | null
+): string {
+  const upc = resolveUnitsPerCase(unitsPerAlternate, lotSize);
+  if (!upc || upc <= 0) return "";
+  const cases = quantity / upc;
+  if (!Number.isFinite(cases) || cases <= 0) return "";
+  // Show integer cases when exact; otherwise 1 decimal
+  const label = Number.isInteger(cases) ? String(cases) : cases.toFixed(1);
+  return `${label} Case`;
+}
 
 function normalizeItems(invoice: Record<string, any>): NormalizedItem[] {
   const rawItems = invoice.items?.length > 0 ? invoice.items : (invoice.order?.items ?? []);
@@ -61,10 +83,12 @@ function normalizeItems(invoice: Record<string, any>): NormalizedItem[] {
       row.unitsPerAlternate ?? product?.unitsPerAlternate ?? undefined;
     const alternateUnit = row.alternateUnit || product?.alternateUnit || undefined;
     const taxableValue = hasInvoiceItems
-      ? row.taxableValue
+      ? Number(row.taxableValue ?? 0)
       : row.quantity * row.unitPrice - (row.discount || 0);
-    const rawUom = hasInvoiceItems ? row.unitOfMeasure : product?.unitOfMeasure;
-    const unitOfMeasure = invoiceUnitOfMeasure(rawUom, alternateUnit, lotSize);
+    const cgstRate = row.cgstRate ?? (row.gstRate ? row.gstRate / 2 : 2.5);
+    const sgstRate = row.sgstRate ?? cgstRate;
+    const cgstAmount = row.cgstAmount ?? (taxableValue * cgstRate) / 100;
+    const sgstAmount = row.sgstAmount ?? (taxableValue * sgstRate) / 100;
 
     return {
       key: row.id || row.productId || String(index),
@@ -75,31 +99,55 @@ function normalizeItems(invoice: Record<string, any>): NormalizedItem[] {
       unitsPerAlternate,
       alternateUnit,
       taxableValue,
-      unitOfMeasure,
-      unitPrice: row.unitPrice,
-      quantity: row.quantity,
+      // Match Tally product invoices: rate is always per Nos
+      perUnit: "Nos",
+      unitPrice: Number(row.unitPrice || 0),
+      quantity: Number(row.quantity || 0),
       hsnCode: (hasInvoiceItems ? row.hsnCode : product?.hsnCode) || "-",
+      cgstRate,
+      sgstRate,
+      cgstAmount,
+      sgstAmount,
     };
   });
 }
 
-function buildTaxGroups(items: NormalizedItem[], invoice: Record<string, any>): TaxGroup[] {
-  const rawItems = invoice.items?.length > 0 ? invoice.items : (invoice.order?.items ?? []);
-  const hasInvoiceItems = invoice.items?.length > 0;
-  const groups = new Map<number, TaxGroup>();
+/** HSN-wise tax summary — matches Tally footer table */
+function buildHsnTaxRows(items: NormalizedItem[]): HsnTaxRow[] {
+  const map = new Map<string, HsnTaxRow>();
+  for (const item of items) {
+    const key = `${item.hsnCode}|${item.cgstRate}|${item.sgstRate}`;
+    const existing = map.get(key) || {
+      hsnCode: item.hsnCode,
+      taxable: 0,
+      cgstRate: item.cgstRate,
+      sgstRate: item.sgstRate,
+      cgst: 0,
+      sgst: 0,
+    };
+    existing.taxable += item.taxableValue;
+    existing.cgst += item.cgstAmount;
+    existing.sgst += item.sgstAmount;
+    map.set(key, existing);
+  }
+  return Array.from(map.values());
+}
 
-  rawItems.forEach((row: any) => {
-    const cgstRate = row.cgstRate ?? (row.gstRate ? row.gstRate / 2 : 2.5);
-    const sgstRate = row.sgstRate ?? cgstRate;
-    const taxable = row.taxableValue ?? row.quantity * row.unitPrice - (row.discount || 0);
-    const existing = groups.get(cgstRate) || { cgstRate, sgstRate, taxable: 0, cgst: 0, sgst: 0 };
-    existing.taxable += taxable;
-    existing.cgst += row.cgstAmount ?? (taxable * cgstRate) / 100;
-    existing.sgst += row.sgstAmount ?? (taxable * sgstRate) / 100;
-    groups.set(cgstRate, existing);
-  });
-
-  return Array.from(groups.values()).sort((a, b) => a.cgstRate - b.cgstRate);
+/** Tax rate groups for the Output CGST/SGST lines under the items table */
+function buildTaxRateGroups(items: NormalizedItem[]) {
+  const map = new Map<number, { cgstRate: number; sgstRate: number; cgst: number; sgst: number }>();
+  for (const item of items) {
+    const existing = map.get(item.cgstRate) || {
+      cgstRate: item.cgstRate,
+      sgstRate: item.sgstRate,
+      cgst: 0,
+      sgst: 0,
+    };
+    existing.cgst += item.cgstAmount;
+    existing.sgst += item.sgstAmount;
+    map.set(item.cgstRate, existing);
+  }
+  return Array.from(map.values()).sort((a, b) => a.cgstRate - b.cgstRate);
 }
 
 function paginateItems(items: NormalizedItem[]): PageSlice[] {
@@ -142,45 +190,118 @@ function InvoiceHeaderBlock({
     "";
 
   const consigneeName = invoice.shippingName || invoice.dealerName || invoice.dealer?.firmName || "";
-  const consigneeAddress = invoice.shippingAddress || invoice.dealerAddress || invoice.dealer?.businessAddress || invoice.dealer?.firmAddress || "";
+  const consigneeAddress =
+    invoice.shippingAddress ||
+    invoice.dealerAddress ||
+    invoice.dealer?.businessAddress ||
+    invoice.dealer?.firmAddress ||
+    "";
   const consigneeCity = invoice.shippingCity || invoice.dealerCity || invoice.dealer?.city || "";
-  const consigneeState = invoice.shippingState || invoice.dealerState || invoice.dealer?.state || "Maharashtra";
+  const consigneeState =
+    invoice.shippingState || invoice.dealerState || invoice.dealer?.state || "Maharashtra";
+  const consigneePincode =
+    invoice.shippingPincode || invoice.dealerPincode || invoice.dealer?.pincode || "";
   const consigneeGst = invoice.shippingGstn || invoice.dealerGst || invoice.dealer?.gstNumber || "-";
   const consigneeStateCode = invoice.shippingStateCode || invoice.dealerStateCode || "27";
 
   const buyerName = invoice.dealerName || invoice.dealer?.firmName || "";
-  const buyerAddress = invoice.dealerAddress || invoice.dealer?.businessAddress || invoice.dealer?.firmAddress || "";
+  const buyerAddress =
+    invoice.dealerAddress || invoice.dealer?.businessAddress || invoice.dealer?.firmAddress || "";
   const buyerCity = invoice.dealerCity || invoice.dealer?.city || "";
   const buyerState = invoice.dealerState || invoice.dealer?.state || "Maharashtra";
+  const buyerPincode = invoice.dealerPincode || invoice.dealer?.pincode || "";
   const buyerGst = invoice.dealerGst || invoice.dealer?.gstNumber || "-";
   const buyerStateCode = invoice.dealerStateCode || "27";
+  const placeOfSupply = invoice.placeOfSupply || buyerState || consigneeState;
 
-  const invoiceNoLabel = "Invoice No.";
+  const metaCell = (label: string, value?: string | null) => (
+    <td className={`${cellClass} w-1/2`}>
+      <p className={metaLabel}>{label}</p>
+      <p className={metaValue}>{value || "\u00a0"}</p>
+    </td>
+  );
 
   return (
     <>
       <div className="border-b border-black py-1.5 text-center">
         <h1 className="text-[13px] font-bold tracking-wide">
-          Tax Invoice{pageNum > 1 ? `(Page ${pageNum})` : ""}
+          Tax Invoice{pageNum > 1 ? ` (Page ${pageNum})` : ""}
         </h1>
       </div>
 
-      <div className="flex border-b border-black">
-        <div className="flex w-[88px] shrink-0 items-start justify-center border-r border-black p-2">
-          <DaichiLogo size="invoice" />
+      {/* Top: company (left) + invoice particulars (right) — Tally layout */}
+      <div className="grid grid-cols-2 border-b border-black">
+        <div className="flex border-r border-black">
+          <div className="flex w-[72px] shrink-0 items-start justify-center border-r border-black p-1.5">
+            <DaichiLogo size="invoice" />
+          </div>
+          <div className="flex-1 p-2 text-[10px] leading-snug">
+            <p className="text-[11px] font-bold">{supplierName}</p>
+            <p>{invoice.supplierAddress || DAICHI_SUPPLIER.address}</p>
+            <p>{invoice.supplierCity || DAICHI_SUPPLIER.addressLine2}</p>
+            <p>
+              Dis-{DAICHI_SUPPLIER.district} {DAICHI_SUPPLIER.state} -{" "}
+              {invoice.supplierPincode || "412308"}
+            </p>
+            <p>GSTIN/UIN: {invoice.supplierGstin || DAICHI_SUPPLIER.gstin}</p>
+            <p>
+              State Name : {DAICHI_SUPPLIER.state}, Code :{" "}
+              {invoice.supplierStateCode || DAICHI_SUPPLIER.stateCode}
+            </p>
+            <p>Contact : {invoice.supplierContact || DAICHI_SUPPLIER.contact}</p>
+            <p>E-Mail : {invoice.supplierEmail || DAICHI_SUPPLIER.email}</p>
+          </div>
         </div>
-        <div className="flex-1 p-2 text-[10px] leading-snug">
-          <p className="text-[11px] font-bold">{supplierName}</p>
-          <p>{invoice.supplierAddress || DAICHI_SUPPLIER.address}</p>
-          <p>{invoice.supplierCity || DAICHI_SUPPLIER.addressLine2}</p>
-          <p>Dis-{DAICHI_SUPPLIER.district}</p>
-          <p>GSTIN/UIN: {invoice.supplierGstin || DAICHI_SUPPLIER.gstin}</p>
-          <p>State Name : {DAICHI_SUPPLIER.state}, Code : {invoice.supplierStateCode || DAICHI_SUPPLIER.stateCode}</p>
-          <p>Contact : {invoice.supplierContact || DAICHI_SUPPLIER.contact}</p>
-          <p>E-Mail : {invoice.supplierEmail || DAICHI_SUPPLIER.email}</p>
-        </div>
+
+        <table className="w-full border-collapse text-[10px]">
+          <tbody>
+            <tr>
+              {metaCell("Invoice No.", invoice.invoiceNumber)}
+              {metaCell("Dated", formatInvoiceDate(invoice.invoiceDate))}
+            </tr>
+            <tr>
+              {metaCell("Delivery Note", invoice.deliveryNote)}
+              {metaCell("Mode/Terms of Payment", invoice.paymentTerms)}
+            </tr>
+            <tr>
+              {metaCell("Reference No. & Date.", invoice.referenceNo)}
+              {metaCell("Other References", invoice.otherReferences)}
+            </tr>
+            <tr>
+              {metaCell(
+                "Buyer's Order No.",
+                invoice.order?.orderNumber || invoice.orderNumber
+              )}
+              {metaCell(
+                "Dated",
+                invoice.order?.createdAt ? formatInvoiceDate(invoice.order.createdAt) : ""
+              )}
+            </tr>
+            <tr>
+              {metaCell("Dispatch Doc No.", invoice.dispatchDocNo)}
+              {metaCell(
+                "Delivery Note Date",
+                invoice.deliveryNoteDate ? formatInvoiceDate(invoice.deliveryNoteDate) : ""
+              )}
+            </tr>
+            <tr>
+              {metaCell("Dispatched through", invoice.transportMode)}
+              {metaCell(
+                "Destination",
+                invoice.destination || invoice.shippingCity || invoice.dealerCity || ""
+              )}
+            </tr>
+            <tr>
+              <td className={cellClass} colSpan={2}>
+                <p className={metaLabel}>Terms of Delivery</p>
+                <p className={metaValue}>{invoice.termsOfDelivery || "\u00a0"}</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
+      {/* Consignee | Buyer — side by side like classic Tally party block */}
       <table className="w-full border-collapse text-[10px]">
         <tbody>
           <tr>
@@ -188,68 +309,34 @@ function InvoiceHeaderBlock({
               <p className="font-semibold underline">Consignee (Ship to)</p>
               <p className="font-medium">{consigneeName}</p>
               <p>{consigneeAddress}</p>
-              <p>{consigneeCity}{consigneeState ? `, ${consigneeState}` : ""}</p>
+              <p>
+                {consigneeState}
+                {consigneePincode ? ` - ${consigneePincode}` : ""}
+                {consigneeCity && !consigneeAddress?.includes(consigneeCity)
+                  ? `, ${consigneeCity}`
+                  : ""}
+              </p>
               <p>GSTIN/UIN : {consigneeGst}</p>
-              <p>State Name : {consigneeState}, Code : {consigneeStateCode}</p>
-              {contactPerson && <p>Contact person : {contactPerson}</p>}
-              {contactNumber && <p>Contact : {contactNumber}</p>}
+              <p>
+                State Name : {consigneeState}, Code : {consigneeStateCode}
+              </p>
             </td>
             <td className={`${cellClass} w-1/2`}>
               <p className="font-semibold underline">Buyer (Bill to)</p>
               <p className="font-medium">{buyerName}</p>
               <p>{buyerAddress}</p>
-              <p>{buyerCity}{buyerState ? `, ${buyerState}` : ""}</p>
+              <p>
+                {buyerState}
+                {buyerPincode ? ` - ${buyerPincode}` : ""}
+                {buyerCity && !buyerAddress?.includes(buyerCity) ? `, ${buyerCity}` : ""}
+              </p>
               <p>GSTIN/UIN : {buyerGst}</p>
-              <p>State Name : {buyerState}, Code : {buyerStateCode}</p>
+              <p>
+                State Name : {buyerState}, Code : {buyerStateCode}
+              </p>
+              <p>Place of Supply : {placeOfSupply}</p>
               {contactPerson && <p>Contact person : {contactPerson}</p>}
               {contactNumber && <p>Contact : {contactNumber}</p>}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <table className="w-full border-collapse text-[10px]">
-        <tbody>
-          <tr>
-            <td className={cellClass}>
-              <p>{invoiceNoLabel}</p>
-              <p className="font-semibold">{invoice.invoiceNumber}</p>
-            </td>
-            <td className={cellClass}>
-              <p>Delivery Note</p>
-              <p>{invoice.deliveryNote || ""}</p>
-            </td>
-            <td className={cellClass}>
-              <p>Reference No. &amp; Date.</p>
-              <p>{invoice.referenceNo || ""}</p>
-            </td>
-            <td className={cellClass}>
-              <p>Buyer&apos;s Order No.</p>
-              <p>{invoice.order?.orderNumber || invoice.orderNumber || ""}</p>
-            </td>
-          </tr>
-          <tr>
-            <td className={cellClass}>
-              <p>Dated</p>
-              <p className="font-medium">{formatInvoiceDate(invoice.invoiceDate)}</p>
-            </td>
-            <td className={cellClass}>
-              <p>Mode/Terms of Payment</p>
-              <p>{invoice.paymentTerms || ""}</p>
-            </td>
-            <td className={cellClass}>
-              <p>Other References</p>
-              <p>{invoice.otherReferences || ""}</p>
-            </td>
-            <td className={cellClass}>
-              <p>Destination</p>
-              <p>{invoice.destination || invoice.shippingCity || invoice.dealerCity || ""}</p>
-            </td>
-          </tr>
-          <tr>
-            <td className={cellClass} colSpan={4}>
-              <p>Terms of Delivery</p>
-              <p>{invoice.termsOfDelivery || invoice.termsAndConditions || ""}</p>
             </td>
           </tr>
         </tbody>
@@ -262,55 +349,64 @@ function ItemsTable({
   pageItems,
   showTotals,
   invoice,
-  taxGroups,
+  taxRateGroups,
   allItems,
 }: {
   pageItems: NormalizedItem[];
   showTotals: boolean;
   invoice: Record<string, any>;
-  taxGroups: TaxGroup[];
+  taxRateGroups: ReturnType<typeof buildTaxRateGroups>;
   allItems: NormalizedItem[];
 }) {
   const totalQty = allItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalCases = allItems.reduce((sum, item) => {
+    const upc = resolveUnitsPerCase(item.unitsPerAlternate, item.lotSize);
+    if (!upc || upc <= 0) return sum;
+    const cases = item.quantity / upc;
+    return Number.isInteger(cases) ? sum + cases : sum;
+  }, 0);
 
   return (
     <table className="w-full border-collapse text-[10px]">
       <thead>
         <tr>
-          <th className={`${thClass} w-[28px]`}>Sl<br />No.</th>
-          <th className={`${thClass} min-w-[160px] text-left`}>Description of Goods</th>
-          <th className={`${thClass} w-[72px]`}>Amount</th>
-          <th className={`${thClass} w-[36px]`}>per</th>
-          <th className={`${thClass} w-[56px]`}>Rate</th>
-          <th className={`${thClass} w-[64px]`}>Quantity</th>
+          <th className={`${thClass} w-[28px]`}>
+            Sl
+            <br />
+            No.
+          </th>
+          <th className={`${thClass} min-w-[140px] text-left`}>Description of Goods</th>
           <th className={`${thClass} w-[64px]`}>HSN/SAC</th>
+          <th className={`${thClass} w-[64px]`}>Alt. Quantity</th>
+          <th className={`${thClass} w-[64px]`}>Quantity</th>
+          <th className={`${thClass} w-[56px]`}>Rate</th>
+          <th className={`${thClass} w-[36px]`}>per</th>
+          <th className={`${thClass} w-[72px]`}>Amount</th>
         </tr>
       </thead>
       <tbody>
         {pageItems.map((row) => {
-          const caseLabel = formatCaseLabel(row.quantity, row.lotSize, row.unitsPerAlternate);
-          const description = `${row.productName}${row.packingSize ? ` - ${row.packingSize}` : ""}`;
-          const perUnit = row.unitOfMeasure;
-          const unitsLabel =
-            row.unitsPerAlternate && row.unitsPerAlternate > 0
-              ? `1 ${row.alternateUnit || "Case"} = ${row.unitsPerAlternate} ${perUnit}`
-              : null;
+          const description = `${row.productName}${
+            row.packingSize ? ` - ${row.packingSize}` : ""
+          }`;
+          const altQty = formatAltQuantity(row.quantity, row.lotSize, row.unitsPerAlternate);
 
           return (
             <tr key={row.key}>
               <td className={`${cellClass} text-center`}>{row.index + 1}</td>
-              <td className={cellClass}>
-                {description}
-                {unitsLabel && <span className="block text-[9px]">{unitsLabel}</span>}
-                {caseLabel && <span className="block">{caseLabel}</span>}
-              </td>
-              <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(row.taxableValue)}</td>
-              <td className={`${cellClass} text-center`}>{perUnit}</td>
-              <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(row.unitPrice)}</td>
-              <td className={`${cellClass} text-center`}>
-                {row.quantity} {perUnit}
-              </td>
+              <td className={cellClass}>{description}</td>
               <td className={`${cellClass} text-center font-mono`}>{row.hsnCode}</td>
+              <td className={`${cellClass} text-center`}>{altQty}</td>
+              <td className={`${cellClass} text-center`}>
+                {row.quantity} {row.perUnit}
+              </td>
+              <td className={`${cellClass} text-right tabular-nums`}>
+                {formatInvoiceAmount(row.unitPrice)}
+              </td>
+              <td className={`${cellClass} text-center`}>{row.perUnit}</td>
+              <td className={`${cellClass} text-right tabular-nums`}>
+                {formatInvoiceAmount(row.taxableValue)}
+              </td>
             </tr>
           );
         })}
@@ -318,47 +414,66 @@ function ItemsTable({
         {showTotals && (
           <>
             <tr>
-              <td className={cellClass} colSpan={2} />
+              <td className={cellClass} colSpan={7} />
               <td className={`${cellClass} text-right font-medium tabular-nums`}>
                 {formatInvoiceAmount(invoice.subtotal)}
               </td>
-              <td className={cellClass} colSpan={4} />
             </tr>
 
-            {taxGroups.map((group) => (
+            {taxRateGroups.map((group) => (
               <React.Fragment key={group.cgstRate}>
                 <tr>
-                  <td className={cellClass} colSpan={2}>Output CGST @ {group.cgstRate}%</td>
-                  <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(group.cgst)}</td>
-                  <td className={`${cellClass} text-center`} colSpan={3}>%</td>
-                  <td className={`${cellClass} text-right tabular-nums`}>{group.cgstRate.toFixed(2)}</td>
+                  <td className={cellClass} colSpan={5}>
+                    Output CGST @ {group.cgstRate}%
+                  </td>
+                  <td className={`${cellClass} text-right tabular-nums`}>
+                    {group.cgstRate.toFixed(2)}
+                  </td>
+                  <td className={`${cellClass} text-center`}>%</td>
+                  <td className={`${cellClass} text-right tabular-nums`}>
+                    {formatInvoiceAmount(group.cgst)}
+                  </td>
                 </tr>
                 <tr>
-                  <td className={cellClass} colSpan={2}>Output SGST @ {group.sgstRate}%</td>
-                  <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(group.sgst)}</td>
-                  <td className={`${cellClass} text-center`} colSpan={3}>%</td>
-                  <td className={`${cellClass} text-right tabular-nums`}>{group.sgstRate.toFixed(2)}</td>
+                  <td className={cellClass} colSpan={5}>
+                    Output SGST @ {group.sgstRate}%
+                  </td>
+                  <td className={`${cellClass} text-right tabular-nums`}>
+                    {group.sgstRate.toFixed(2)}
+                  </td>
+                  <td className={`${cellClass} text-center`}>%</td>
+                  <td className={`${cellClass} text-right tabular-nums`}>
+                    {formatInvoiceAmount(group.sgst)}
+                  </td>
                 </tr>
               </React.Fragment>
             ))}
 
-            {invoice.roundOff != null && invoice.roundOff !== 0 ? (
+            {invoice.roundOff != null && Number(invoice.roundOff) !== 0 ? (
               <tr>
-                <td className={cellClass} colSpan={2}>Round Off</td>
+                <td className={cellClass} colSpan={7}>
+                  Round Off
+                </td>
                 <td className={`${cellClass} text-right tabular-nums`}>
                   {Number(invoice.roundOff).toFixed(2)}
                 </td>
-                <td className={cellClass} colSpan={4} />
               </tr>
             ) : null}
 
             <tr className="font-bold">
+              <td className={cellClass} colSpan={3}>
+                Total
+              </td>
+              <td className={`${cellClass} text-center`}>
+                {totalCases > 0 ? `${totalCases} Case` : ""}
+              </td>
+              <td className={`${cellClass} text-center`}>
+                {totalQty} Nos
+              </td>
               <td className={cellClass} colSpan={2} />
               <td className={`${cellClass} text-right tabular-nums`}>
-                ₹{formatInvoiceAmount(invoice.totalAmount)}
+                ₹ {formatInvoiceAmount(invoice.totalAmount)}
               </td>
-              <td className={`${cellClass} text-center`} colSpan={3}>{totalQty}</td>
-              <td className={cellClass} />
             </tr>
           </>
         )}
@@ -369,13 +484,17 @@ function ItemsTable({
 
 function InvoiceFooterSection({
   invoice,
-  taxGroups,
+  hsnRows,
 }: {
   invoice: Record<string, any>;
-  taxGroups: TaxGroup[];
+  hsnRows: HsnTaxRow[];
 }) {
   const supplierName = invoice.supplierName || DAICHI_SUPPLIER.name;
-  const totalTax = (invoice.cgstAmount || 0) + (invoice.sgstAmount || 0) + (invoice.igstAmount || 0);
+  const totalTax =
+    (invoice.cgstAmount || 0) + (invoice.sgstAmount || 0) + (invoice.igstAmount || 0);
+  const totalTaxable = hsnRows.reduce((s, r) => s + r.taxable, 0);
+  const totalCgst = hsnRows.reduce((s, r) => s + r.cgst, 0);
+  const totalSgst = hsnRows.reduce((s, r) => s + r.sgst, 0);
 
   return (
     <>
@@ -389,13 +508,29 @@ function InvoiceFooterSection({
         INR {invoice.totalAmountInWords || numberToWords(invoice.totalAmount)}
       </div>
 
+      {/* HSN/SAC summary — Tally footer */}
       <table className="w-full border-collapse text-[10px]">
         <thead>
           <tr>
-            <th className={thClass} rowSpan={2}>Taxable<br />Value</th>
-            <th className={thClass} colSpan={2}>CGST</th>
-            <th className={thClass} colSpan={2}>SGST/UTGST</th>
-            <th className={thClass} rowSpan={2}>Total<br />Tax Amount</th>
+            <th className={thClass} rowSpan={2}>
+              HSN/SAC
+            </th>
+            <th className={thClass} rowSpan={2}>
+              Taxable
+              <br />
+              Value
+            </th>
+            <th className={thClass} colSpan={2}>
+              CGST
+            </th>
+            <th className={thClass} colSpan={2}>
+              SGST/UTGST
+            </th>
+            <th className={thClass} rowSpan={2}>
+              Total
+              <br />
+              Tax Amount
+            </th>
           </tr>
           <tr>
             <th className={thClass}>Rate</th>
@@ -405,23 +540,41 @@ function InvoiceFooterSection({
           </tr>
         </thead>
         <tbody>
-          {taxGroups.map((group) => (
-            <tr key={group.cgstRate}>
-              <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(group.taxable)}</td>
-              <td className={`${cellClass} text-center`}>{group.cgstRate.toFixed(2)}%</td>
-              <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(group.cgst)}</td>
-              <td className={`${cellClass} text-center`}>{group.sgstRate.toFixed(2)}%</td>
-              <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(group.sgst)}</td>
-              <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(group.cgst + group.sgst)}</td>
+          {hsnRows.map((row) => (
+            <tr key={`${row.hsnCode}-${row.cgstRate}`}>
+              <td className={`${cellClass} text-center font-mono`}>{row.hsnCode}</td>
+              <td className={`${cellClass} text-right tabular-nums`}>
+                {formatInvoiceAmount(row.taxable)}
+              </td>
+              <td className={`${cellClass} text-center`}>{row.cgstRate.toFixed(2)}%</td>
+              <td className={`${cellClass} text-right tabular-nums`}>
+                {formatInvoiceAmount(row.cgst)}
+              </td>
+              <td className={`${cellClass} text-center`}>{row.sgstRate.toFixed(2)}%</td>
+              <td className={`${cellClass} text-right tabular-nums`}>
+                {formatInvoiceAmount(row.sgst)}
+              </td>
+              <td className={`${cellClass} text-right tabular-nums`}>
+                {formatInvoiceAmount(row.cgst + row.sgst)}
+              </td>
             </tr>
           ))}
           <tr className="font-semibold">
-            <td className={`${cellClass} text-right`}>Total:</td>
+            <td className={`${cellClass} text-right`}>Total</td>
+            <td className={`${cellClass} text-right tabular-nums`}>
+              {formatInvoiceAmount(totalTaxable || invoice.subtotal)}
+            </td>
             <td className={cellClass} />
-            <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(invoice.cgstAmount)}</td>
+            <td className={`${cellClass} text-right tabular-nums`}>
+              {formatInvoiceAmount(totalCgst || invoice.cgstAmount)}
+            </td>
             <td className={cellClass} />
-            <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(invoice.sgstAmount)}</td>
-            <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(totalTax)}</td>
+            <td className={`${cellClass} text-right tabular-nums`}>
+              {formatInvoiceAmount(totalSgst || invoice.sgstAmount)}
+            </td>
+            <td className={`${cellClass} text-right tabular-nums`}>
+              {formatInvoiceAmount(totalTax)}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -436,7 +589,8 @@ function InvoiceFooterSection({
             <td className={`${cellClass} w-1/2 align-top`}>
               <p className="mb-1 font-semibold">Declaration</p>
               <p>
-                We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.
+                We declare that this invoice shows the actual price of the goods described and
+                that all particulars are true and correct.
               </p>
             </td>
             <td className={`${cellClass} w-1/2 align-top`}>
@@ -448,6 +602,7 @@ function InvoiceFooterSection({
                 Branch &amp; IFS Code : {invoice.bankBranch || DAICHI_SUPPLIER.bankBranch} &amp;{" "}
                 {invoice.bankIfsc || DAICHI_SUPPLIER.bankIfsc}
               </p>
+              <p>SWIFT Code :</p>
             </td>
           </tr>
           <tr>
@@ -465,7 +620,8 @@ function InvoiceFooterSection({
 
 export function TaxInvoiceDocument({ invoice }: TaxInvoiceDocumentProps) {
   const allItems = normalizeItems(invoice);
-  const taxGroups = buildTaxGroups(allItems, invoice);
+  const taxRateGroups = buildTaxRateGroups(allItems);
+  const hsnRows = buildHsnTaxRows(allItems);
   const pages = paginateItems(allItems);
 
   return (
@@ -481,14 +637,14 @@ export function TaxInvoiceDocument({ invoice }: TaxInvoiceDocumentProps) {
             pageItems={page.items}
             showTotals={page.showTotals}
             invoice={invoice}
-            taxGroups={taxGroups}
+            taxRateGroups={taxRateGroups}
             allItems={allItems}
           />
 
-          {page.showTotals && <InvoiceFooterSection invoice={invoice} taxGroups={taxGroups} />}
+          {page.showTotals && <InvoiceFooterSection invoice={invoice} hsnRows={hsnRows} />}
 
           <div className="border-t border-black p-1.5 text-center text-[9px]">
-            {page.showContinued && <p className="mb-1">continued ...</p>}
+            {page.showContinued && <p className="mb-1">continued...</p>}
             <p>This is a Computer Generated Invoice</p>
           </div>
         </div>
