@@ -59,13 +59,12 @@ function normalizeItems(invoice: Record<string, any>): NormalizedItem[] {
     const lotSize = row.lotSize || product?.lotSize || "";
     const unitsPerAlternate =
       row.unitsPerAlternate ?? product?.unitsPerAlternate ?? undefined;
-    const alternateUnit = row.alternateUnit || product?.alternateUnit || "Case";
+    const alternateUnit = row.alternateUnit || product?.alternateUnit || undefined;
     const taxableValue = hasInvoiceItems
       ? row.taxableValue
       : row.quantity * row.unitPrice - (row.discount || 0);
-    const unitOfMeasure = invoiceUnitOfMeasure(
-      hasInvoiceItems ? row.unitOfMeasure : product?.unitOfMeasure
-    );
+    const rawUom = hasInvoiceItems ? row.unitOfMeasure : product?.unitOfMeasure;
+    const unitOfMeasure = invoiceUnitOfMeasure(rawUom, alternateUnit, lotSize);
 
     return {
       key: row.id || row.productId || String(index),
@@ -76,7 +75,7 @@ function normalizeItems(invoice: Record<string, any>): NormalizedItem[] {
       unitsPerAlternate,
       alternateUnit,
       taxableValue,
-      unitOfMeasure: unitOfMeasure || "Nos",
+      unitOfMeasure,
       unitPrice: row.unitPrice,
       quantity: row.quantity,
       hsnCode: (hasInvoiceItems ? row.hsnCode : product?.hsnCode) || "-",
@@ -291,10 +290,11 @@ function ItemsTable({
         {pageItems.map((row) => {
           const caseLabel = formatCaseLabel(row.quantity, row.lotSize, row.unitsPerAlternate);
           const description = `${row.productName}${row.packingSize ? ` - ${row.packingSize}` : ""}`;
+          const perUnit = row.unitOfMeasure;
           const unitsLabel =
             row.unitsPerAlternate && row.unitsPerAlternate > 0
-              ? `1 ${row.alternateUnit || "Case"} = ${row.unitsPerAlternate} Nos`
-              : row.lotSize || null;
+              ? `1 ${row.alternateUnit || "Case"} = ${row.unitsPerAlternate} ${perUnit}`
+              : null;
 
           return (
             <tr key={row.key}>
@@ -305,10 +305,10 @@ function ItemsTable({
                 {caseLabel && <span className="block">{caseLabel}</span>}
               </td>
               <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(row.taxableValue)}</td>
-              <td className={`${cellClass} text-center`}>{row.unitOfMeasure}</td>
+              <td className={`${cellClass} text-center`}>{perUnit}</td>
               <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(row.unitPrice)}</td>
               <td className={`${cellClass} text-center`}>
-                {row.quantity} {invoiceUnitOfMeasure()}
+                {row.quantity} {perUnit}
               </td>
               <td className={`${cellClass} text-center font-mono`}>{row.hsnCode}</td>
             </tr>
@@ -357,7 +357,7 @@ function ItemsTable({
               <td className={`${cellClass} text-right tabular-nums`}>
                 ₹{formatInvoiceAmount(invoice.totalAmount)}
               </td>
-              <td className={`${cellClass} text-center`} colSpan={3}>{totalQty} Nos</td>
+              <td className={`${cellClass} text-center`} colSpan={3}>{totalQty}</td>
               <td className={cellClass} />
             </tr>
           </>

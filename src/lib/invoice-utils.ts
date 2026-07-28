@@ -1,10 +1,36 @@
-/** Parse units-per-case from lotSize e.g. "2.5 kg * 6 unit=15 kg" → 6, "250ml * 40 = 10 lit" → 40 */
+/**
+ * Parse units-per-case from lotSize strings:
+ * - "2.5 kg * 6 unit=15 kg" → 6
+ * - "250ml * 40 = 10 lit" → 40
+ * - "100 Btl" / "100 Pcs" / "50 Bags" → 100
+ */
 export function parseUnitsPerCase(lotSize?: string): number | null {
   if (!lotSize) return null;
   const unitMatch = lotSize.match(/\*\s*(\d+)\s*unit/i);
   if (unitMatch) return parseInt(unitMatch[1], 10);
   const caseMatch = lotSize.match(/\*\s*(\d+)\s*=/i);
   if (caseMatch) return parseInt(caseMatch[1], 10);
+  const packedMatch = lotSize.match(
+    /^(\d+)\s*(Btl|Bottles?|Pcs|Pieces?|Bags?|Nos|Case|Box|unit|units)\b/i
+  );
+  if (packedMatch) return parseInt(packedMatch[1], 10);
+  return null;
+}
+
+/** Extract alternate unit label from lotSize e.g. "100 Btl" → "Btl". */
+export function parseAlternateUnit(lotSize?: string): string | null {
+  if (!lotSize) return null;
+  const packedMatch = lotSize.match(
+    /^(\d+)\s*(Btl|Bottles?|Pcs|Pieces?|Bags?|Nos|Case|Box|unit|units)\b/i
+  );
+  if (packedMatch) {
+    const raw = packedMatch[2];
+    if (/^bottles?$/i.test(raw)) return "Btl";
+    if (/^pieces?$/i.test(raw)) return "Pcs";
+    if (/^bags?$/i.test(raw)) return "Bag";
+    if (/^units?$/i.test(raw)) return "Nos";
+    return raw;
+  }
   return null;
 }
 
@@ -23,17 +49,19 @@ export function resolveUnitsPerCase(
 
 /**
  * Build the lotSize string used on invoices when packing + units-per-case are known.
- * Format matches parseUnitsPerCase(): "<size> * <n> unit"
  */
 export function buildLotSize(
   packingSize?: string | null,
   unitsPerAlternate?: number | null,
-  existingLotSize?: string | null
+  existingLotSize?: string | null,
+  alternateUnit?: string | null
 ): string {
   const units = Number(unitsPerAlternate);
   const size = (packingSize || "").trim();
-  if (size && Number.isFinite(units) && units > 0) {
-    return `${size} * ${units} unit`;
+  const alt = (alternateUnit || parseAlternateUnit(existingLotSize || "") || "Case").trim();
+  if (Number.isFinite(units) && units > 0) {
+    if (size) return `${size} * ${units} unit`;
+    return `${units} ${alt}`;
   }
   return (existingLotSize || "").trim();
 }
@@ -51,8 +79,20 @@ export function formatCaseLabel(
   return `(${cases} Case)`;
 }
 
-/** Invoice line uses "Nos" per Daichi tax invoice PDFs */
-export function invoiceUnitOfMeasure(_productUom?: string): string {
+/**
+ * Unit shown in the invoice "per" / quantity columns.
+ * Prefer the packing alternate (Btl, Pcs, …), then product UOM — never force Nos.
+ */
+export function invoiceUnitOfMeasure(
+  productUom?: string | null,
+  alternateUnit?: string | null,
+  lotSize?: string | null
+): string {
+  const fromLot = parseAlternateUnit(lotSize || undefined);
+  const alt = (alternateUnit || fromLot || "").trim();
+  if (alt) return alt;
+  const uom = (productUom || "").trim();
+  if (uom) return uom;
   return "Nos";
 }
 

@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/popover";
 import { apiFetch } from "@/lib/api";
 import { cn, formatCurrency } from "@/lib/utils";
-import { formatCaseLabel, resolveUnitsPerCase, buildLotSize, DAICHI_SUPPLIER } from "@/lib/invoice-utils";
+import { formatCaseLabel, resolveUnitsPerCase, buildLotSize, parseAlternateUnit, invoiceUnitOfMeasure, DAICHI_SUPPLIER } from "@/lib/invoice-utils";
 import { Plus, Trash2, FileText, Calculator, Check, ChevronsUpDown, Search } from "lucide-react";
 
 interface Dealer {
@@ -231,9 +231,19 @@ export default function BillingPage() {
     if (!product) return;
 
     const unitsPerCase = resolveUnitsPerCase(product.unitsPerAlternate, product.lotSize);
-    const lotSize = buildLotSize(product.packingSize, product.unitsPerAlternate, product.lotSize);
-    // Default qty = 1 Case (units per case) when packaging is known; else 1 Nos.
-    const defaultQty = unitsPerCase && unitsPerCase > 0 ? unitsPerCase : 1;
+    const alternateUnit =
+      product.alternateUnit ||
+      parseAlternateUnit(product.lotSize) ||
+      invoiceUnitOfMeasure(product.unitOfMeasure, null, product.lotSize) ||
+      "Case";
+    const lotSize = buildLotSize(
+      product.packingSize,
+      unitsPerCase,
+      product.lotSize,
+      alternateUnit
+    );
+    // Default qty = 1 piece/bottle (not full case) — user edits Units per Case separately.
+    const defaultQty = 1;
     
     const existing = items.find((i) => i.productId === selectedProduct);
     if (existing) {
@@ -254,8 +264,12 @@ export default function BillingPage() {
           packingSize: product.packingSize || product.unitOfMeasure,
           lotSize,
           unitsPerAlternate: unitsPerCase || undefined,
-          alternateUnit: product.alternateUnit || "Case",
-          unitOfMeasure: product.unitOfMeasure,
+          alternateUnit,
+          unitOfMeasure: invoiceUnitOfMeasure(
+            product.unitOfMeasure,
+            alternateUnit,
+            product.lotSize
+          ),
           mrp: product.mrp || product.basePrice,
           quantity: defaultQty,
           unitPrice: product.basePrice,
@@ -280,6 +294,16 @@ export default function BillingPage() {
         updated.cgstRate = rate / 2;
         updated.sgstRate = rate / 2;
         updated.igstRate = 0;
+      }
+      if (field === "unitsPerAlternate") {
+        const units = typeof value === "number" ? value : parseFloat(String(value)) || 0;
+        updated.unitsPerAlternate = units > 0 ? units : undefined;
+        updated.lotSize = buildLotSize(
+          item.packingSize,
+          units > 0 ? units : undefined,
+          item.lotSize,
+          item.alternateUnit
+        );
       }
       return updated;
     }));
@@ -752,13 +776,27 @@ export default function BillingPage() {
                                   <span className="font-medium">{product.name} - {product.packingSize || product.unitOfMeasure}</span>
                                   <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                                     <span className="font-mono">{product.productCode}</span>
-                                    {product.unitsPerAlternate ? (
-                                      <span className="text-blue-600">
-                                        1 {product.alternateUnit || "Case"} = {product.unitsPerAlternate} Nos
-                                      </span>
-                                    ) : product.lotSize ? (
-                                      <span className="text-blue-600">({product.lotSize})</span>
-                                    ) : null}
+                                    {(() => {
+                                      const upc = resolveUnitsPerCase(
+                                        product.unitsPerAlternate,
+                                        product.lotSize
+                                      );
+                                      const alt =
+                                        product.alternateUnit ||
+                                        parseAlternateUnit(product.lotSize) ||
+                                        "Case";
+                                      if (!upc) return null;
+                                      return (
+                                        <span className="text-blue-600">
+                                          1 {alt} = {upc}{" "}
+                                          {invoiceUnitOfMeasure(
+                                            product.unitOfMeasure,
+                                            alt,
+                                            product.lotSize
+                                          )}
+                                        </span>
+                                      );
+                                    })()}
                                     <span>HSN: {product.hsnCode || '-'}</span>
                                     <span className="font-semibold text-green-700">Rate: {formatCurrency(product.basePrice)}</span>
                                     <span>MRP: {formatCurrency(product.mrp || product.basePrice)}</span>
@@ -829,23 +867,32 @@ export default function BillingPage() {
                                 onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)}
                                 className="w-20"
                               />
-                              <p className="mt-1 text-[10px] text-muted-foreground">{item.quantity} Nos</p>
+                              <p className="mt-1 text-[10px] text-muted-foreground">
+                                {item.quantity} {item.unitOfMeasure || "units"}
+                              </p>
                             </TableCell>
                             <TableCell>
-                              {unitsPerCase ? (
-                                <div className="text-xs">
-                                  <p className="font-medium text-blue-700">
-                                    1 {item.alternateUnit || "Case"} = {unitsPerCase} Nos
-                                  </p>
-                                  {item.lotSize && (
-                                    <p className="text-muted-foreground">{item.lotSize}</p>
-                                  )}
-                                  {caseLabel && (
-                                    <p className="font-medium text-foreground">{caseLabel}</p>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">—</span>
+                              <Input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={item.unitsPerAlternate ?? ""}
+                                onChange={(e) =>
+                                  updateItem(
+                                    index,
+                                    "unitsPerAlternate",
+                                    parseInt(e.target.value, 10) || 0
+                                  )
+                                }
+                                placeholder="e.g. 100"
+                                className="w-20"
+                              />
+                              <p className="mt-1 text-[10px] text-muted-foreground">
+                                1 Case = {item.unitsPerAlternate || "—"}{" "}
+                                {item.unitOfMeasure || item.alternateUnit || "units"}
+                              </p>
+                              {caseLabel && (
+                                <p className="text-[10px] font-medium text-foreground">{caseLabel}</p>
                               )}
                             </TableCell>
                             <TableCell>
