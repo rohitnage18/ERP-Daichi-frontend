@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/popover";
 import { apiFetch } from "@/lib/api";
 import { cn, formatCurrency } from "@/lib/utils";
-import { formatCaseLabel, parseUnitsPerCase, DAICHI_SUPPLIER } from "@/lib/invoice-utils";
+import { formatCaseLabel, resolveUnitsPerCase, buildLotSize, DAICHI_SUPPLIER } from "@/lib/invoice-utils";
 import { Plus, Trash2, FileText, Calculator, Check, ChevronsUpDown, Search } from "lucide-react";
 
 interface Dealer {
@@ -73,6 +73,8 @@ interface Product {
   unitOfMeasure: string;
   packingSize?: string;
   lotSize?: string;
+  unitsPerAlternate?: number;
+  alternateUnit?: string;
   categoryName?: string;
   description?: string;
 }
@@ -84,6 +86,8 @@ interface InvoiceItem {
   hsnCode: string;
   packingSize?: string;
   lotSize?: string;
+  unitsPerAlternate?: number;
+  alternateUnit?: string;
   unitOfMeasure?: string;
   mrp?: number;
   quantity: number;
@@ -122,11 +126,6 @@ export default function BillingPage() {
   const [shippingPincode, setShippingPincode] = useState("");
   const [shippingGstn, setShippingGstn] = useState("");
   
-  const [transportMode, setTransportMode] = useState("");
-  const [vehicleNumber, setVehicleNumber] = useState("");
-  const [eWayBillNumber, setEWayBillNumber] = useState("");
-  const [eWayBillDate, setEWayBillDate] = useState("");
-  
   const [termsAndConditions, setTermsAndConditions] = useState(
     "1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged on overdue payments.\n3. Subject to local jurisdiction."
   );
@@ -134,8 +133,6 @@ export default function BillingPage() {
     `A/c Holder's Name : ${DAICHI_SUPPLIER.name}\nBank Name : ${DAICHI_SUPPLIER.bankName}\nA/c No. : ${DAICHI_SUPPLIER.bankAccountNo}\nBranch & IFS Code : ${DAICHI_SUPPLIER.bankBranch} & ${DAICHI_SUPPLIER.bankIfsc}`
   );
 
-  const [freightCharges, setFreightCharges] = useState(0);
-  
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
 
@@ -232,12 +229,17 @@ export default function BillingPage() {
     
     const product = products.find((p) => p.id === selectedProduct);
     if (!product) return;
+
+    const unitsPerCase = resolveUnitsPerCase(product.unitsPerAlternate, product.lotSize);
+    const lotSize = buildLotSize(product.packingSize, product.unitsPerAlternate, product.lotSize);
+    // Default qty = 1 Case (units per case) when packaging is known; else 1 Nos.
+    const defaultQty = unitsPerCase && unitsPerCase > 0 ? unitsPerCase : 1;
     
     const existing = items.find((i) => i.productId === selectedProduct);
     if (existing) {
       setItems(items.map((i) =>
         i.productId === selectedProduct
-          ? { ...i, quantity: i.quantity + 1 }
+          ? { ...i, quantity: i.quantity + defaultQty }
           : i
       ));
     } else {
@@ -250,10 +252,12 @@ export default function BillingPage() {
           productCode: product.productCode,
           hsnCode: product.hsnCode || "",
           packingSize: product.packingSize || product.unitOfMeasure,
-          lotSize: product.lotSize || "",
+          lotSize,
+          unitsPerAlternate: unitsPerCase || undefined,
+          alternateUnit: product.alternateUnit || "Case",
           unitOfMeasure: product.unitOfMeasure,
           mrp: product.mrp || product.basePrice,
-          quantity: 1,
+          quantity: defaultQty,
           unitPrice: product.basePrice,
           discount: 0,
           gstRate,
@@ -314,7 +318,7 @@ export default function BillingPage() {
     });
 
     const totalTax = totalCgst + totalSgst + totalIgst;
-    const rawTotal = subtotal + totalTax + freightCharges;
+    const rawTotal = subtotal + totalTax;
     const roundedTotal = Math.round(rawTotal);
     const roundOff = Math.round((roundedTotal - rawTotal) * 100) / 100;
 
@@ -324,7 +328,6 @@ export default function BillingPage() {
       sgst: totalSgst,
       igst: totalIgst,
       totalTax,
-      freightCharges,
       roundOff,
       grandTotal: roundedTotal,
     };
@@ -353,10 +356,6 @@ export default function BillingPage() {
           shippingState,
           shippingPincode,
           shippingGstn,
-          transportMode,
-          vehicleNumber,
-          eWayBillNumber,
-          eWayBillDate: eWayBillDate || null,
           termsAndConditions,
           bankDetails,
           items: items.map((item) => ({
@@ -365,11 +364,11 @@ export default function BillingPage() {
             unitPrice: item.unitPrice,
             discount: item.discount,
             lotSize: item.lotSize,
+            unitsPerAlternate: item.unitsPerAlternate,
             cgstRate: item.cgstRate,
             sgstRate: item.sgstRate,
             igstRate: item.igstRate,
           })),
-          freightCharges,
         }),
       });
 
@@ -694,54 +693,10 @@ export default function BillingPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Transport Details</CardTitle>
-              <CardDescription>E-way bill and transport information</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Transport Mode</Label>
-                <Select value={transportMode} onValueChange={setTransportMode}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select mode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="road">Road</SelectItem>
-                    <SelectItem value="rail">Rail</SelectItem>
-                    <SelectItem value="air">Air</SelectItem>
-                    <SelectItem value="ship">Ship</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Vehicle Number</Label>
-                <Input
-                  value={vehicleNumber}
-                  onChange={(e) => setVehicleNumber(e.target.value)}
-                  placeholder="MH12AB1234"
-                />
-              </div>
-              <div>
-                <Label>E-Way Bill Number</Label>
-                <Input
-                  value={eWayBillNumber}
-                  onChange={(e) => setEWayBillNumber(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label>E-Way Bill Date</Label>
-                <Input
-                  type="date"
-                  value={eWayBillDate}
-                  onChange={(e) => setEWayBillDate(e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
               <CardTitle>Invoice Items</CardTitle>
-              <CardDescription>Add products to the invoice</CardDescription>
+              <CardDescription>
+                Add products — Units per Case (lot size) is taken from the product master
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4 flex gap-2">
@@ -797,7 +752,13 @@ export default function BillingPage() {
                                   <span className="font-medium">{product.name} - {product.packingSize || product.unitOfMeasure}</span>
                                   <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                                     <span className="font-mono">{product.productCode}</span>
-                                    {product.lotSize && <span className="text-blue-600">({product.lotSize})</span>}
+                                    {product.unitsPerAlternate ? (
+                                      <span className="text-blue-600">
+                                        1 {product.alternateUnit || "Case"} = {product.unitsPerAlternate} Nos
+                                      </span>
+                                    ) : product.lotSize ? (
+                                      <span className="text-blue-600">({product.lotSize})</span>
+                                    ) : null}
                                     <span>HSN: {product.hsnCode || '-'}</span>
                                     <span className="font-semibold text-green-700">Rate: {formatCurrency(product.basePrice)}</span>
                                     <span>MRP: {formatCurrency(product.mrp || product.basePrice)}</span>
@@ -832,7 +793,7 @@ export default function BillingPage() {
                         <TableHead>HSN</TableHead>
                         <TableHead>Packing</TableHead>
                         <TableHead className="w-20">Qty (Nos)</TableHead>
-                        <TableHead className="w-28">Lot / Case</TableHead>
+                        <TableHead className="w-36">Units per Case</TableHead>
                         <TableHead className="w-28">Rate/Unit</TableHead>
                         <TableHead className="w-24">Discount</TableHead>
                         <TableHead className="w-20">GST %</TableHead>
@@ -845,8 +806,8 @@ export default function BillingPage() {
                     <TableBody>
                       {items.map((item, index) => {
                         const calc = calculateItemTotal(item);
-                        const caseLabel = formatCaseLabel(item.quantity, item.lotSize);
-                        const unitsPerCase = parseUnitsPerCase(item.lotSize);
+                        const unitsPerCase = resolveUnitsPerCase(item.unitsPerAlternate, item.lotSize);
+                        const caseLabel = formatCaseLabel(item.quantity, item.lotSize, item.unitsPerAlternate);
                         return (
                           <TableRow key={index}>
                             <TableCell>
@@ -871,11 +832,13 @@ export default function BillingPage() {
                               <p className="mt-1 text-[10px] text-muted-foreground">{item.quantity} Nos</p>
                             </TableCell>
                             <TableCell>
-                              {item.lotSize ? (
+                              {unitsPerCase ? (
                                 <div className="text-xs">
-                                  <p className="text-blue-700">{item.lotSize}</p>
-                                  {unitsPerCase && (
-                                    <p className="text-muted-foreground">{unitsPerCase} Nos/case</p>
+                                  <p className="font-medium text-blue-700">
+                                    1 {item.alternateUnit || "Case"} = {unitsPerCase} Nos
+                                  </p>
+                                  {item.lotSize && (
+                                    <p className="text-muted-foreground">{item.lotSize}</p>
                                   )}
                                   {caseLabel && (
                                     <p className="font-medium text-foreground">{caseLabel}</p>
@@ -1005,17 +968,6 @@ export default function BillingPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">IGST</span>
                   <span className="tabular-nums">{formatCurrency(totals.igst)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Freight (Less)</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={freightCharges || ""}
-                    onChange={(e) => setFreightCharges(parseFloat(e.target.value) || 0)}
-                    className="h-8 w-28 text-right tabular-nums"
-                  />
                 </div>
                 {totals.roundOff !== 0 && (
                   <div className="flex justify-between text-sm">

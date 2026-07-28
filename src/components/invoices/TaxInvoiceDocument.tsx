@@ -21,6 +21,8 @@ type NormalizedItem = {
   productName: string;
   packingSize: string;
   lotSize: string;
+  unitsPerAlternate?: number;
+  alternateUnit?: string;
   taxableValue: number;
   unitOfMeasure: string;
   unitPrice: number;
@@ -55,6 +57,9 @@ function normalizeItems(invoice: Record<string, any>): NormalizedItem[] {
     const productName = hasInvoiceItems ? row.productName : product?.name;
     const packingSize = hasInvoiceItems ? row.packingSize : product?.packingSize || "";
     const lotSize = row.lotSize || product?.lotSize || "";
+    const unitsPerAlternate =
+      row.unitsPerAlternate ?? product?.unitsPerAlternate ?? undefined;
+    const alternateUnit = row.alternateUnit || product?.alternateUnit || "Case";
     const taxableValue = hasInvoiceItems
       ? row.taxableValue
       : row.quantity * row.unitPrice - (row.discount || 0);
@@ -68,6 +73,8 @@ function normalizeItems(invoice: Record<string, any>): NormalizedItem[] {
       productName: productName || "",
       packingSize,
       lotSize,
+      unitsPerAlternate,
+      alternateUnit,
       taxableValue,
       unitOfMeasure: unitOfMeasure || "Nos",
       unitPrice: row.unitPrice,
@@ -149,7 +156,7 @@ function InvoiceHeaderBlock({
   const buyerGst = invoice.dealerGst || invoice.dealer?.gstNumber || "-";
   const buyerStateCode = invoice.dealerStateCode || "27";
 
-  const invoiceNoLabel = invoice.eWayBillNumber ? "Invoice No. e-Way Bill No." : "Invoice No.";
+  const invoiceNoLabel = "Invoice No.";
 
   return (
     <>
@@ -208,7 +215,6 @@ function InvoiceHeaderBlock({
             <td className={cellClass}>
               <p>{invoiceNoLabel}</p>
               <p className="font-semibold">{invoice.invoiceNumber}</p>
-              {invoice.eWayBillNumber && <p className="font-mono text-[9px]">{invoice.eWayBillNumber}</p>}
             </td>
             <td className={cellClass}>
               <p>Delivery Note</p>
@@ -225,14 +231,6 @@ function InvoiceHeaderBlock({
           </tr>
           <tr>
             <td className={cellClass}>
-              <p>Dispatch Doc No.</p>
-              <p>{invoice.dispatchDocNo || ""}</p>
-            </td>
-            <td className={cellClass}>
-              <p>Dispatched through</p>
-              <p className="capitalize">{invoice.transportMode || ""}</p>
-            </td>
-            <td className={cellClass}>
               <p>Dated</p>
               <p className="font-medium">{formatInvoiceDate(invoice.invoiceDate)}</p>
             </td>
@@ -240,19 +238,9 @@ function InvoiceHeaderBlock({
               <p>Mode/Terms of Payment</p>
               <p>{invoice.paymentTerms || ""}</p>
             </td>
-          </tr>
-          <tr>
             <td className={cellClass}>
               <p>Other References</p>
               <p>{invoice.otherReferences || ""}</p>
-            </td>
-            <td className={cellClass}>
-              <p>Dated</p>
-              <p>{invoice.order?.createdAt ? formatInvoiceDate(invoice.order.createdAt) : ""}</p>
-            </td>
-            <td className={cellClass}>
-              <p>Delivery Note Date</p>
-              <p>{invoice.deliveryNoteDate ? formatInvoiceDate(invoice.deliveryNoteDate) : ""}</p>
             </td>
             <td className={cellClass}>
               <p>Destination</p>
@@ -284,7 +272,6 @@ function ItemsTable({
   taxGroups: TaxGroup[];
   allItems: NormalizedItem[];
 }) {
-  const totalTax = (invoice.cgstAmount || 0) + (invoice.sgstAmount || 0) + (invoice.igstAmount || 0);
   const totalQty = allItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
@@ -302,14 +289,19 @@ function ItemsTable({
       </thead>
       <tbody>
         {pageItems.map((row) => {
-          const caseLabel = formatCaseLabel(row.quantity, row.lotSize);
+          const caseLabel = formatCaseLabel(row.quantity, row.lotSize, row.unitsPerAlternate);
           const description = `${row.productName}${row.packingSize ? ` - ${row.packingSize}` : ""}`;
+          const unitsLabel =
+            row.unitsPerAlternate && row.unitsPerAlternate > 0
+              ? `1 ${row.alternateUnit || "Case"} = ${row.unitsPerAlternate} Nos`
+              : row.lotSize || null;
 
           return (
             <tr key={row.key}>
               <td className={`${cellClass} text-center`}>{row.index + 1}</td>
               <td className={cellClass}>
                 {description}
+                {unitsLabel && <span className="block text-[9px]">{unitsLabel}</span>}
                 {caseLabel && <span className="block">{caseLabel}</span>}
               </td>
               <td className={`${cellClass} text-right tabular-nums`}>{formatInvoiceAmount(row.taxableValue)}</td>
@@ -349,18 +341,6 @@ function ItemsTable({
                 </tr>
               </React.Fragment>
             ))}
-
-            {invoice.freightCharges ? (
-              <tr>
-                <td className={cellClass} colSpan={2}>
-                  Less : Freight Charges (-)
-                </td>
-                <td className={`${cellClass} text-right tabular-nums`}>
-                  {formatInvoiceAmount(Math.abs(Number(invoice.freightCharges)))}
-                </td>
-                <td className={cellClass} colSpan={4} />
-              </tr>
-            ) : null}
 
             {invoice.roundOff != null && invoice.roundOff !== 0 ? (
               <tr>

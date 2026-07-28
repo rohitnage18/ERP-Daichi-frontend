@@ -8,9 +8,43 @@ export function parseUnitsPerCase(lotSize?: string): number | null {
   return null;
 }
 
+/**
+ * Resolve Units per Case: prefer explicit unitsPerAlternate from the product,
+ * otherwise parse from the lotSize string.
+ */
+export function resolveUnitsPerCase(
+  unitsPerAlternate?: number | null,
+  lotSize?: string
+): number | null {
+  const n = Number(unitsPerAlternate);
+  if (Number.isFinite(n) && n > 0) return n;
+  return parseUnitsPerCase(lotSize);
+}
+
+/**
+ * Build the lotSize string used on invoices when packing + units-per-case are known.
+ * Format matches parseUnitsPerCase(): "<size> * <n> unit"
+ */
+export function buildLotSize(
+  packingSize?: string | null,
+  unitsPerAlternate?: number | null,
+  existingLotSize?: string | null
+): string {
+  const units = Number(unitsPerAlternate);
+  const size = (packingSize || "").trim();
+  if (size && Number.isFinite(units) && units > 0) {
+    return `${size} * ${units} unit`;
+  }
+  return (existingLotSize || "").trim();
+}
+
 /** Daichi invoice case label e.g. "(2 Case)" */
-export function formatCaseLabel(quantity: number, lotSize?: string): string | null {
-  const unitsPerCase = parseUnitsPerCase(lotSize);
+export function formatCaseLabel(
+  quantity: number,
+  lotSize?: string,
+  unitsPerAlternate?: number | null
+): string | null {
+  const unitsPerCase = resolveUnitsPerCase(unitsPerAlternate, lotSize);
   if (!unitsPerCase || unitsPerCase <= 0) return null;
   const cases = quantity / unitsPerCase;
   if (!Number.isInteger(cases) || cases <= 0) return null;
