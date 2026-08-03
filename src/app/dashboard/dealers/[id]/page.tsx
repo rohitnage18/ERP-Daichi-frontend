@@ -7,9 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, Upload } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
+
+const REQUIRED_DOC_TYPES = [
+  { docType: "panCard", label: "PAN Card" },
+  { docType: "aadharCard", label: "Aadhar Card" },
+  { docType: "gstCertificate", label: "GST Certificate" },
+  { docType: "blankCheque", label: "Blank Cheque" },
+  { docType: "fertilizerLicense", label: "Fertilizer License" },
+] as const;
 
 interface DaichiDealerDetail {
   id: string;
@@ -35,7 +43,16 @@ interface DaichiDealerDetail {
   infrastructures: Array<{ id: string; type: string | null; ownership: string | null; details: string | null; area: number | null; address: string | null }>;
   otherCompanies: Array<{ id: string; companyName: string | null; productDetails: string | null; annualBusiness: string | null }>;
   securityCheques: Array<{ id: string; bankName: string | null; chequeNumber: string | null; chequeDate: string | null; amount: number | null }>;
-  documents: Array<{ id: string; docType: string; fileName: string | null; mimeType: string | null; size: number | null; storageKey: string | null; s3Key: string | null }>;
+  documents: Array<{
+    id: string;
+    docType: string;
+    fileName: string | null;
+    mimeType: string | null;
+    size: number | null;
+    storageKey: string | null;
+    s3Key: string | null;
+    uploadedLocally?: boolean;
+  }>;
   syncLogs: Array<{ id: string; runAt: string; result: string; message: string | null }>;
 }
 
@@ -50,6 +67,7 @@ export default function DealerDetailPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "error" | "success"; message: string } | null>(null);
 
   useEffect(() => {
@@ -207,6 +225,53 @@ export default function DealerDetailPage() {
     }
   };
 
+  const fileToBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || "");
+        const base64 = result.includes(",") ? result.split(",")[1] : result;
+        resolve(base64);
+      };
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
+
+  const handleUploadMissingDoc = async (docType: string, file: File | null) => {
+    if (!file) return;
+    try {
+      setUploadingDoc(docType);
+      if (file.size > 8 * 1024 * 1024) {
+        showToast("error", "File too large (max 8 MB).");
+        return;
+      }
+      const dataBase64 = await fileToBase64(file);
+      const res = await apiFetch(`/api/daichi-dealers/${params.id}/documents/${docType}/upload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          dataBase64,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Upload failed (${res.status})`);
+      }
+      showToast("success", `${getDocLabel(docType)} uploaded.`);
+      await fetchDealer();
+    } catch (error) {
+      console.error("Document upload failed:", error);
+      showToast(
+        "error",
+        error instanceof Error ? error.message : "Unable to upload document right now."
+      );
+    } finally {
+      setUploadingDoc(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -225,6 +290,11 @@ export default function DealerDetailPage() {
       </div>
     );
   }
+
+  const presentDocTypes = new Set(
+    (dealer.documents || []).filter((d) => d.fileName).map((d) => d.docType)
+  );
+  const missingDocTypes = REQUIRED_DOC_TYPES.filter((d) => !presentDocTypes.has(d.docType));
 
   return (
     <div className="space-y-6">
@@ -385,14 +455,49 @@ export default function DealerDetailPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadAll}
-                  disabled={downloadingAll}
+                  disabled={downloadingAll || dealer.documents.length === 0}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   {downloadingAll ? "Preparing..." : "Download All"}
                 </Button>
                 </div>
               </div>
-              {dealer.documents.length === 0 ? (
+
+              {missingDocTypes.length > 0 && (
+                <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm font-medium text-amber-900">
+                    Missing documents — upload to complete the dealer file
+                  </p>
+                  {missingDocTypes.map((doc) => (
+                    <div
+                      key={doc.docType}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-100 bg-white px-3 py-2"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{doc.label}</p>
+                        <p className="text-xs text-muted-foreground">Not found on dealer form</p>
+                      </div>
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
+                        <input
+                          type="file"
+                          accept="image/*,.pdf,application/pdf"
+                          className="hidden"
+                          disabled={uploadingDoc === doc.docType}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            e.target.value = "";
+                            void handleUploadMissingDoc(doc.docType, file);
+                          }}
+                        />
+                        <Upload className="h-4 w-4" />
+                        {uploadingDoc === doc.docType ? "Uploading..." : "Upload"}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {dealer.documents.length === 0 && missingDocTypes.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No documents uploaded</p>
               ) : (
                 dealer.documents.map((doc) => {
@@ -402,7 +507,14 @@ export default function DealerDetailPage() {
 
                   return (
                   <div key={doc.id || doc.docType} className="rounded-md border p-3 text-xs">
-                    <p className="font-medium">{getDocLabel(doc.docType)}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium">{getDocLabel(doc.docType)}</p>
+                      {doc.uploadedLocally && (
+                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                          Uploaded in ERP
+                        </span>
+                      )}
+                    </div>
                     <p>{doc.fileName || "-"}</p>
                     <p>{doc.mimeType || "-"} • {doc.size != null ? `${doc.size} bytes` : "-"}</p>
 
@@ -461,6 +573,21 @@ export default function DealerDetailPage() {
                               ? "Preview PDF"
                               : "Open"}
                       </Button>
+                      <label className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs hover:bg-muted">
+                        <input
+                          type="file"
+                          accept="image/*,.pdf,application/pdf"
+                          className="hidden"
+                          disabled={uploadingDoc === doc.docType}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            e.target.value = "";
+                            void handleUploadMissingDoc(doc.docType, file);
+                          }}
+                        />
+                        <Upload className="h-3.5 w-3.5" />
+                        {uploadingDoc === doc.docType ? "Uploading..." : "Replace"}
+                      </label>
                     </div>
                   </div>
                 );

@@ -42,6 +42,8 @@ export default function EmailSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [smtpConfigured, setSmtpConfigured] = useState<boolean | null>(null);
+  const [emailProvider, setEmailProvider] = useState<string | null>(null);
+  const [emailFrom, setEmailFrom] = useState<string | null>(null);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
 
   const [invite, setInvite] = useState({
@@ -64,7 +66,11 @@ export default function EmailSettingsPage() {
 
     apiFetch("/api/emails/status")
       .then((r) => r.json())
-      .then((d) => setSmtpConfigured(Boolean(d.smtpConfigured)))
+      .then((d) => {
+        setSmtpConfigured(Boolean(d.smtpConfigured || d.emailConfigured));
+        setEmailProvider(d.provider || null);
+        setEmailFrom(d.from || null);
+      })
       .catch(() => setSmtpConfigured(false));
 
     apiFetchJsonArray<EmailLog>("/api/emails/logs")
@@ -174,11 +180,16 @@ export default function EmailSettingsPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={smtpConfigured ? "default" : "secondary"}>
-          SMTP: {smtpConfigured === null ? "Checking…" : smtpConfigured ? "Configured" : "Not configured — emails saved to log only"}
+          Email:{" "}
+          {smtpConfigured === null
+            ? "Checking…"
+            : smtpConfigured
+              ? `Configured (${emailProvider || "smtp"}${emailFrom ? ` · ${emailFrom}` : ""})`
+              : "Not configured — emails saved to log only"}
         </Badge>
         {!smtpConfigured && smtpConfigured !== null && (
           <span className="text-xs text-muted-foreground">
-            Set SMTP_HOST, SMTP_USER, SMTP_PASS in backend .env
+            Set RESEND_API_KEY + RESEND_FROM (cloud) or SMTP_HOST/USER/PASS (EC2/local) in backend .env
           </span>
         )}
       </div>

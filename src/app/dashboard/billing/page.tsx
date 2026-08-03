@@ -133,6 +133,8 @@ export default function BillingPage() {
     `A/c Holder's Name : ${DAICHI_SUPPLIER.name}\nBank Name : ${DAICHI_SUPPLIER.bankName}\nA/c No. : ${DAICHI_SUPPLIER.bankAccountNo}\nBranch & IFS Code : ${DAICHI_SUPPLIER.bankBranch} & ${DAICHI_SUPPLIER.bankIfsc}`
   );
 
+  const [freightCharges, setFreightCharges] = useState(0);
+
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
 
@@ -342,7 +344,8 @@ export default function BillingPage() {
     });
 
     const totalTax = totalCgst + totalSgst + totalIgst;
-    const rawTotal = subtotal + totalTax;
+    const freight = Math.max(0, freightCharges || 0);
+    const rawTotal = subtotal + totalTax - freight;
     const roundedTotal = Math.round(rawTotal);
     const roundOff = Math.round((roundedTotal - rawTotal) * 100) / 100;
 
@@ -352,6 +355,7 @@ export default function BillingPage() {
       sgst: totalSgst,
       igst: totalIgst,
       totalTax,
+      freightCharges: freight,
       roundOff,
       grandTotal: roundedTotal,
     };
@@ -382,6 +386,7 @@ export default function BillingPage() {
           shippingGstn,
           termsAndConditions,
           bankDetails,
+          freightCharges: freightCharges > 0 ? freightCharges : 0,
           items: items.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
@@ -1015,6 +1020,18 @@ export default function BillingPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">IGST</span>
                   <span className="tabular-nums">{formatCurrency(totals.igst)}</span>
+                </div>
+                <div className="flex justify-between text-sm items-center gap-2">
+                  <span className="text-muted-foreground">Freight (Less)</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={freightCharges || ""}
+                    onChange={(e) => setFreightCharges(Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder="0"
+                    className="h-8 w-28 text-right tabular-nums"
+                  />
                 </div>
                 {totals.roundOff !== 0 && (
                   <div className="flex justify-between text-sm">
