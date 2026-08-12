@@ -84,6 +84,8 @@ interface Product {
   alternateUnit?: string;
   categoryName?: string;
   description?: string;
+  stockRemaining?: number;
+  lowStock?: boolean;
 }
 
 interface InvoiceItem {
@@ -810,6 +812,9 @@ export default function BillingPage() {
                                     <span>HSN: {product.hsnCode || '-'}</span>
                                     <span className="font-semibold text-green-700">Rate: {formatCurrency(product.basePrice)}</span>
                                     <span>MRP: {formatCurrency(product.mrp || product.basePrice)}</span>
+                                    <span className={product.lowStock ? "font-semibold text-amber-700" : ""}>
+                                      Stock: {product.stockRemaining ?? 0}
+                                    </span>
                                   </div>
                                 </div>
                                 <Check

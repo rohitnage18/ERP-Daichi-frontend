@@ -37,6 +37,9 @@ interface Product {
   unitOfMeasure: string;
   status: string;
   categoryName?: string;
+  stockRemaining?: number;
+  reorderLevel?: number;
+  lowStock?: boolean;
   subCategoryName?: string;
   subCategory?: {
     name?: string;
@@ -118,12 +121,22 @@ export default function ProductsPage() {
   };
 
   const categoryOrder = [
-    "Water Soluble Fertilizers",
+    "Primary Nutrients (N:P:K)",
+    "Secondary Nutrients",
     "Micronutrients",
-    "Bio Products",
-    "Crop Protection",
-    "Plant Growth Regulators",
-    "Uncategorized"
+    "Liquid water-soluble fertilizer (WSF)",
+    "Secondary liquid water-soluble fertilizer",
+    "Liquid micronutrients",
+    "Bio Fertilizers",
+    "Bio pesticides",
+    "Organic fertilizers",
+    "Bio Stimulants",
+    "Insecticides",
+    "Weedicides / herbicides",
+    "Fungicides",
+    "Plant Growth Promoter / Retardant (PGR)",
+    "Pesticides",
+    "Uncategorized",
   ];
 
   const sortedCategories = Object.keys(groupedProducts).sort((a, b) => {
@@ -232,6 +245,7 @@ export default function ProductsPage() {
                           <TableHead className="w-[100px]">Packing</TableHead>
                           <TableHead className="w-[80px]">Lot Size</TableHead>
                           <TableHead className="w-[60px]">Unit</TableHead>
+                          <TableHead className="text-right w-[90px]">Stock</TableHead>
                           <TableHead className="text-right w-[100px]">Rate/Unit</TableHead>
                           <TableHead className="text-right w-[100px]">MRP</TableHead>
                           <TableHead className="text-right w-[60px]">GST</TableHead>
@@ -255,6 +269,13 @@ export default function ProductsPage() {
                             <TableCell className="text-sm">{product.packingSize ?? "—"}</TableCell>
                             <TableCell className="text-xs text-muted-foreground">{product.lotSize ?? "—"}</TableCell>
                             <TableCell className="text-sm">{product.unitOfMeasure}</TableCell>
+                            <TableCell
+                              className={`text-right tabular-nums font-medium ${
+                                product.lowStock ? "text-amber-700" : ""
+                              }`}
+                            >
+                              {product.stockRemaining ?? 0}
+                            </TableCell>
                             <TableCell className="text-right font-medium">
                               {formatCurrency(product.basePrice)}
                             </TableCell>

@@ -50,6 +50,8 @@ export default function NewProductPage() {
     basePrice: "",
     mrp: "",
     gstRate: "5",
+    openingStock: "0",
+    reorderLevel: "10",
     description: "",
     targetCrops: "",
   });
@@ -97,6 +99,8 @@ export default function NewProductPage() {
           basePrice: parseFloat(formData.basePrice),
           mrp: formData.mrp ? parseFloat(formData.mrp) : undefined,
           gstRate: parseFloat(formData.gstRate),
+          openingStock: parseFloat(formData.openingStock) || 0,
+          reorderLevel: parseFloat(formData.reorderLevel) || 10,
           description: formData.description || undefined,
           targetCrops: formData.targetCrops || undefined,
         }),
@@ -330,7 +334,7 @@ export default function NewProductPage() {
                 onValueChange={(value) => setFormData({ ...formData, gstRate: value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select GST rate" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {GST_RATE_OPTIONS.map((g) => (
@@ -340,6 +344,28 @@ export default function NewProductPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="openingStock">Opening Stock (Nos)</Label>
+              <Input
+                id="openingStock"
+                type="number"
+                min={0}
+                value={formData.openingStock}
+                onChange={(e) => setFormData({ ...formData, openingStock: e.target.value })}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reorderLevel">Reorder Level</Label>
+              <Input
+                id="reorderLevel"
+                type="number"
+                min={0}
+                value={formData.reorderLevel}
+                onChange={(e) => setFormData({ ...formData, reorderLevel: e.target.value })}
+                placeholder="10"
+              />
             </div>
             <div className="space-y-2 md:col-span-3">
               <Label htmlFor="description">Description</Label>

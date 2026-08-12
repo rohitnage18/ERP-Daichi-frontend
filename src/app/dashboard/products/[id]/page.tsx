@@ -42,8 +42,12 @@ export default function ProductDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingStock, setSavingStock] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [stockRemaining, setStockRemaining] = useState(0);
+  const [reorderLevel, setReorderLevel] = useState("10");
+  const [stockInput, setStockInput] = useState("0");
   const [form, setForm] = useState({
     productCode: "",
     name: "",
@@ -78,6 +82,9 @@ export default function ProductDetailPage() {
           return;
         }
         const p = await prodRes.json();
+        setStockRemaining(Number(p.stockRemaining) || 0);
+        setStockInput(String(Number(p.stockRemaining) || 0));
+        setReorderLevel(String(Number(p.reorderLevel) || 10));
         setForm({
           productCode: p.productCode || "",
           name: p.name || "",
@@ -150,6 +157,33 @@ export default function ProductDetailPage() {
     }
   };
 
+  const handleSaveStock = async () => {
+    setSavingStock(true);
+    try {
+      const res = await apiFetch(`/api/inventory/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quantity: parseFloat(stockInput) || 0,
+          reorderLevel: parseFloat(reorderLevel) || 10,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStockRemaining(Number(data.stockRemaining) || 0);
+        setStockInput(String(Number(data.stockRemaining) || 0));
+        setReorderLevel(String(Number(data.reorderLevel) || 10));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Could not update stock.");
+      }
+    } catch {
+      alert("Network error");
+    } finally {
+      setSavingStock(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -180,10 +214,50 @@ export default function ProductDetailPage() {
         <div>
           <h1 className="text-3xl font-bold">{form.name || "Product"}</h1>
           <p className="text-muted-foreground">
-            {canEdit ? "View and edit product, packaging & pricing" : "Product details"}
+            Stock remaining:{" "}
+            <span className={stockRemaining <= Number(reorderLevel) ? "font-semibold text-amber-700" : "font-semibold"}>
+              {stockRemaining} Nos
+            </span>
           </p>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Stock Remaining</CardTitle>
+          <CardDescription>Warehouse quantity on hand (deducted on dispatch)</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <Label>Current stock (Nos)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={stockInput}
+              disabled={!canEdit}
+              onChange={(e) => setStockInput(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Reorder level</Label>
+            <Input
+              type="number"
+              min={0}
+              value={reorderLevel}
+              disabled={!canEdit}
+              onChange={(e) => setReorderLevel(e.target.value)}
+            />
+          </div>
+          {canEdit && (
+            <div className="flex items-end">
+              <Button type="button" variant="outline" onClick={handleSaveStock} disabled={savingStock}>
+                {savingStock && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Update stock
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
