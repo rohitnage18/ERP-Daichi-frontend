@@ -105,7 +105,12 @@ export default function ProductDetailPage() {
   }, [params.id]);
 
   const packingSizes = form.packingType ? PACKING_SIZES[form.packingType] : [];
-  const conversion = conversionLabel(form.alternateUnit, form.unitsPerAlternate, form.unitOfMeasure);
+  const conversion = conversionLabel(
+    form.alternateUnit,
+    form.unitsPerAlternate,
+    form.unitOfMeasure,
+    form.packingSize
+  );
 
   const handleSave = async () => {
     setSaving(true);
@@ -413,9 +418,6 @@ export default function ProductDetailPage() {
 
       {canEdit && (
         <div className="flex justify-end gap-4">
-          <Button variant="outline" asChild>
-            <Link href="/dashboard/products">Cancel</Link>
-          </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-2 h-4 w-4" />

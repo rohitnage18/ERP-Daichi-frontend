@@ -187,6 +187,12 @@ export default function LogisticsPage() {
   const activeDispatches = queue?.activeDispatches ?? [];
   const delivered = queue?.delivered ?? [];
   const pendingTotal = pendingInvoices.length + pendingOrders.length;
+  const inTransitItems = activeDispatches.filter((d) =>
+    ["IN_TRANSIT", "OUT_FOR_DELIVERY", "DISPATCHED"].includes(d.status)
+  );
+  const packingItems = activeDispatches.filter((d) =>
+    ["PENDING", "PACKED"].includes(d.status)
+  );
 
   return (
     <div className="space-y-6">
@@ -224,15 +230,20 @@ export default function LogisticsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={inTransitItems.length > 0 ? "border-blue-300 bg-blue-50/40" : undefined}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
                 <Truck className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{activeDispatches.length}</p>
+                <p className="text-2xl font-bold">{inTransitItems.length}</p>
                 <p className="text-sm text-muted-foreground">In Transit</p>
+                {packingItems.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    + {packingItems.length} packing / pending
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -356,6 +367,65 @@ export default function LogisticsPage() {
         </CardContent>
       </Card>
 
+      {inTransitItems.length > 0 && (
+        <Card className="border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-800">
+              <Truck className="h-5 w-5" />
+              Currently In Transit ({inTransitItems.length})
+            </CardTitle>
+            <CardDescription>
+              Dispatched / in-transit / out-for-delivery consignments
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Dispatch #</TableHead>
+                  <TableHead>Reference</TableHead>
+                  <TableHead>Dealer</TableHead>
+                  <TableHead>Partner / Vehicle</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Update</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {inTransitItems.map((d) => (
+                  <TableRow key={`transit-${d.id}`} className="bg-blue-50/50">
+                    <TableCell className="font-medium">{d.dispatchNumber}</TableCell>
+                    <TableCell>{d.referenceNumber}</TableCell>
+                    <TableCell>{d.dealerName}</TableCell>
+                    <TableCell>
+                      {d.logisticsPartner}
+                      <span className="block text-xs text-muted-foreground">{d.vehicleNumber}</span>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={d.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Select value={d.status} onValueChange={(status) => handleUpdateStatus(d.id, status)}>
+                        <SelectTrigger className="w-[160px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PENDING">Pending</SelectItem>
+                          <SelectItem value="PACKED">Packed</SelectItem>
+                          <SelectItem value="DISPATCHED">Dispatched</SelectItem>
+                          <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
+                          <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
+                          <SelectItem value="DELIVERED">Delivered</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Active Dispatches</CardTitle>
@@ -379,7 +449,14 @@ export default function LogisticsPage() {
               </TableHeader>
               <TableBody>
                 {activeDispatches.map((d) => (
-                  <TableRow key={d.id}>
+                  <TableRow
+                    key={d.id}
+                    className={
+                      ["IN_TRANSIT", "OUT_FOR_DELIVERY", "DISPATCHED"].includes(d.status)
+                        ? "bg-blue-50/40"
+                        : undefined
+                    }
+                  >
                     <TableCell className="font-medium">{d.dispatchNumber}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{d.type === "invoice" ? "Invoice" : "Order"}</Badge>
@@ -399,6 +476,7 @@ export default function LogisticsPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="PENDING">Pending</SelectItem>
                           <SelectItem value="PACKED">Packed</SelectItem>
                           <SelectItem value="DISPATCHED">Dispatched</SelectItem>
                           <SelectItem value="IN_TRANSIT">In Transit</SelectItem>

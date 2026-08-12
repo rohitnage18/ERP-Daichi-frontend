@@ -65,7 +65,7 @@ export default function InvoiceDetailPage() {
   };
 
   const openPrint = () => {
-    window.open(`/print/invoices/${params.id}`, "_blank", "noopener,noreferrer");
+    window.location.href = `/print/invoices/${params.id}`;
   };
 
   const handleSendEmail = async () => {
@@ -144,7 +144,7 @@ export default function InvoiceDetailPage() {
           </Button>
           <Button variant="outline" onClick={openPrint}>
             <Printer className="mr-2 h-4 w-4" />
-            Print / PDF
+            View & Print
           </Button>
         </div>
       </div>

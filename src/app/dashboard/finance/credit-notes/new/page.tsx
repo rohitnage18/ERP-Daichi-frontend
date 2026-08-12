@@ -244,9 +244,6 @@ export default function NewCreditNotePage() {
           </p>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" asChild>
-              <Link href="/dashboard/finance/credit-notes">Cancel</Link>
-            </Button>
             <Button onClick={handleSubmit} disabled={submitting}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create credit note

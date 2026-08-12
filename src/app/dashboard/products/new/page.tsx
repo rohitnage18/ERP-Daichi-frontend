@@ -70,7 +70,8 @@ export default function NewProductPage() {
   const conversion = conversionLabel(
     formData.alternateUnit,
     formData.unitsPerAlternate,
-    formData.unitOfMeasure
+    formData.unitOfMeasure,
+    formData.packingSize
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -362,11 +363,6 @@ export default function NewProductPage() {
         </Card>
 
         <div className="flex justify-end gap-4">
-          <Link href="/dashboard/products">
-            <Button variant="outline" type="button">
-              Cancel
-            </Button>
-          </Link>
           <Button type="submit" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-2 h-4 w-4" />

@@ -56,13 +56,18 @@ export const GST_RATE_OPTIONS: { value: string; label: string }[] = [
   { value: "28", label: "28%" },
 ];
 
-/** Human-readable conversion label e.g. "1 Case = 6 Nos". */
+/** Human-readable packing label e.g. "5 Kg × 3 unit / case". */
 export function conversionLabel(
   alternateUnit?: string,
   unitsPerAlternate?: number | string,
-  unitOfMeasure = "Nos"
+  unitOfMeasure = "Nos",
+  packingSize?: string
 ): string | null {
   const n = Number(unitsPerAlternate);
-  if (!alternateUnit || !n || n <= 0) return null;
-  return `1 ${alternateUnit} = ${n} ${unitOfMeasure}`;
+  if (!n || n <= 0) return null;
+  if (packingSize?.trim()) {
+    return `${packingSize.trim()} × ${n} unit / case`;
+  }
+  if (!alternateUnit) return `${n} ${unitOfMeasure} / case`;
+  return `${n} ${unitOfMeasure} / ${alternateUnit}`;
 }

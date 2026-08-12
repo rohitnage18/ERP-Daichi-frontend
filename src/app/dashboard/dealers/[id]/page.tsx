@@ -11,14 +11,6 @@ import { ArrowLeft, Download, Upload } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 
-const REQUIRED_DOC_TYPES = [
-  { docType: "panCard", label: "PAN Card" },
-  { docType: "aadharCard", label: "Aadhar Card" },
-  { docType: "gstCertificate", label: "GST Certificate" },
-  { docType: "blankCheque", label: "Blank Cheque" },
-  { docType: "fertilizerLicense", label: "Fertilizer License" },
-] as const;
-
 interface DaichiDealerDetail {
   id: string;
   externalId: string;
@@ -291,11 +283,6 @@ export default function DealerDetailPage() {
     );
   }
 
-  const presentDocTypes = new Set(
-    (dealer.documents || []).filter((d) => d.fileName).map((d) => d.docType)
-  );
-  const missingDocTypes = REQUIRED_DOC_TYPES.filter((d) => !presentDocTypes.has(d.docType));
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -455,7 +442,7 @@ export default function DealerDetailPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadAll}
-                  disabled={downloadingAll || dealer.documents.length === 0}
+                  disabled={downloadingAll || dealer.documents.every((d) => !d.fileName)}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   {downloadingAll ? "Preparing..." : "Download All"}
@@ -463,134 +450,120 @@ export default function DealerDetailPage() {
                 </div>
               </div>
 
-              {missingDocTypes.length > 0 && (
-                <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3">
-                  <p className="text-sm font-medium text-amber-900">
-                    Missing documents — upload to complete the dealer file
-                  </p>
-                  {missingDocTypes.map((doc) => (
-                    <div
-                      key={doc.docType}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-100 bg-white px-3 py-2"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{doc.label}</p>
-                        <p className="text-xs text-muted-foreground">Not found on dealer form</p>
-                      </div>
-                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
-                        <input
-                          type="file"
-                          accept="image/*,.pdf,application/pdf"
-                          className="hidden"
-                          disabled={uploadingDoc === doc.docType}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0] || null;
-                            e.target.value = "";
-                            void handleUploadMissingDoc(doc.docType, file);
-                          }}
-                        />
-                        <Upload className="h-4 w-4" />
-                        {uploadingDoc === doc.docType ? "Uploading..." : "Upload"}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {dealer.documents.length === 0 && missingDocTypes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No documents uploaded</p>
+              {dealer.documents.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No documents on dealer form</p>
               ) : (
                 dealer.documents.map((doc) => {
+                  const hasFile = Boolean(doc.fileName);
                   const preview = previewUrls[doc.docType];
                   const isImage = isImageMime(preview?.mimeType || doc.mimeType);
                   const isPdf = isPdfMime(preview?.mimeType || doc.mimeType);
 
                   return (
-                  <div key={doc.id || doc.docType} className="rounded-md border p-3 text-xs">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium">{getDocLabel(doc.docType)}</p>
-                      {doc.uploadedLocally && (
-                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
-                          Uploaded in ERP
-                        </span>
+                    <div key={doc.id || doc.docType} className="rounded-md border p-3 text-xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium">{getDocLabel(doc.docType)}</p>
+                        {doc.uploadedLocally && (
+                          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                            Uploaded in ERP
+                          </span>
+                        )}
+                      </div>
+                      <p>{doc.fileName || "-"}</p>
+                      <p>
+                        {doc.mimeType || "-"} • {doc.size != null ? `${doc.size} bytes` : "-"}
+                      </p>
+
+                      {hasFile && isImage && preview?.url && (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewImage(preview.url)}
+                          className="mt-2 block overflow-hidden rounded border bg-muted/30"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={preview.url}
+                            alt={getDocLabel(doc.docType)}
+                            className="max-h-40 w-full object-contain"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </button>
                       )}
-                    </div>
-                    <p>{doc.fileName || "-"}</p>
-                    <p>{doc.mimeType || "-"} • {doc.size != null ? `${doc.size} bytes` : "-"}</p>
 
-                    {isImage && preview?.url && (
-                      <button
-                        type="button"
-                        onClick={() => setPreviewImage(preview.url)}
-                        className="mt-2 block overflow-hidden rounded border bg-muted/30"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={preview.url}
-                          alt={getDocLabel(doc.docType)}
-                          className="max-h-40 w-full object-contain"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      </button>
-                    )}
-
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          if (!doc.fileName) {
-                            showToast("error", `${getDocLabel(doc.docType)} is not available for this dealer.`);
-                            return;
-                          }
-                          handleDownloadDocument(doc.docType, doc.fileName || `${doc.docType}.bin`);
-                        }}
-                        disabled={
-                          !doc.fileName ||
-                          downloadingDoc === doc.docType ||
-                          downloadingDoc === `preview-${doc.docType}`
-                        }
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        {downloadingDoc === doc.docType ? "Preparing..." : "Download"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePreviewDocument(doc.docType, doc.mimeType)}
-                        disabled={
-                          !doc.fileName ||
-                          downloadingDoc === doc.docType ||
-                          downloadingDoc === `preview-${doc.docType}`
-                        }
-                      >
-                        {downloadingDoc === `preview-${doc.docType}`
-                          ? "Opening..."
-                          : isImage
-                            ? "View Image"
-                            : isPdf
-                              ? "Preview PDF"
-                              : "Open"}
-                      </Button>
-                      <label className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs hover:bg-muted">
-                        <input
-                          type="file"
-                          accept="image/*,.pdf,application/pdf"
-                          className="hidden"
-                          disabled={uploadingDoc === doc.docType}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0] || null;
-                            e.target.value = "";
-                            void handleUploadMissingDoc(doc.docType, file);
-                          }}
-                        />
-                        <Upload className="h-3.5 w-3.5" />
-                        {uploadingDoc === doc.docType ? "Uploading..." : "Replace"}
-                      </label>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {hasFile ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleDownloadDocument(
+                                  doc.docType,
+                                  doc.fileName || `${doc.docType}.bin`
+                                )
+                              }
+                              disabled={
+                                downloadingDoc === doc.docType ||
+                                downloadingDoc === `preview-${doc.docType}`
+                              }
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              {downloadingDoc === doc.docType ? "Preparing..." : "Download"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePreviewDocument(doc.docType, doc.mimeType)}
+                              disabled={
+                                downloadingDoc === doc.docType ||
+                                downloadingDoc === `preview-${doc.docType}`
+                              }
+                            >
+                              {downloadingDoc === `preview-${doc.docType}`
+                                ? "Opening..."
+                                : isImage
+                                  ? "View Image"
+                                  : isPdf
+                                    ? "Preview PDF"
+                                    : "Open"}
+                            </Button>
+                            <label className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs hover:bg-muted">
+                              <input
+                                type="file"
+                                accept="image/*,.pdf,application/pdf"
+                                className="hidden"
+                                disabled={uploadingDoc === doc.docType}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0] || null;
+                                  e.target.value = "";
+                                  void handleUploadMissingDoc(doc.docType, file);
+                                }}
+                              />
+                              <Upload className="h-3.5 w-3.5" />
+                              {uploadingDoc === doc.docType ? "Uploading..." : "Replace"}
+                            </label>
+                          </>
+                        ) : (
+                          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
+                            <input
+                              type="file"
+                              accept="image/*,.pdf,application/pdf"
+                              className="hidden"
+                              disabled={uploadingDoc === doc.docType}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0] || null;
+                                e.target.value = "";
+                                void handleUploadMissingDoc(doc.docType, file);
+                              }}
+                            />
+                            <Upload className="h-4 w-4" />
+                            {uploadingDoc === doc.docType ? "Uploading..." : "Upload"}
+                          </label>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
+                  );
                 })
               )}
             </CardContent>
@@ -613,25 +586,6 @@ export default function DealerDetailPage() {
               />
             </div>
           )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Sync Logs</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {dealer.syncLogs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No sync logs yet</p>
-              ) : (
-                dealer.syncLogs.map((log, index) => (
-                  <div key={`${log.runAt}-${index}`} className="rounded-md border p-2 text-xs">
-                    <p className="font-medium">{log.result}</p>
-                    <p>{formatDate(log.runAt)}</p>
-                    <p className="text-muted-foreground">{log.message || "-"}</p>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

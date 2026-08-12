@@ -358,9 +358,6 @@ export default function NewRecommendationPage() {
         </div>
 
         <div className="flex justify-end gap-4 mt-6">
-          <Link href="/dashboard/recommendations">
-            <Button variant="outline">Cancel</Button>
-          </Link>
           <Button type="submit" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-2 h-4 w-4" />
