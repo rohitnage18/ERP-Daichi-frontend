@@ -281,7 +281,6 @@ export default function ProductDetailPage() {
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </div>
-          <div className="space-y-2">
           <div className="md:col-span-2">
             <ProductCategorySelect
               categories={categories}
