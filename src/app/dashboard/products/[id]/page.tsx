@@ -26,9 +26,12 @@ import {
   PACKING_TYPE_OPTIONS,
   PackingType,
   UNIT_OF_MEASURE_OPTIONS,
-  conversionLabel,
 } from "@/lib/packaging";
 import { ProductCategorySelect } from "@/components/products/ProductCategorySelect";
+import {
+  PackingDerivedFields,
+  packingUnitsError,
+} from "@/components/products/PackingDerivedFields";
 
 interface CategoryOption {
   id: string;
@@ -113,12 +116,8 @@ export default function ProductDetailPage() {
   }, [params.id]);
 
   const packingSizes = form.packingType ? PACKING_SIZES[form.packingType] : [];
-  const conversion = conversionLabel(
-    form.alternateUnit,
-    form.unitsPerAlternate,
-    form.unitOfMeasure,
-    form.packingSize
-  );
+  const unitsPerCaseError = packingUnitsError(form.unitsPerAlternate);
+  const pricePerUnit = form.basePrice ? parseFloat(form.basePrice) : null;
 
   const handleSave = async () => {
     setSaving(true);
@@ -393,20 +392,15 @@ export default function ProductDetailPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Units per {form.alternateUnit || "Alternate"}</Label>
-            <Input
-              type="number"
-              min={1}
-              value={form.unitsPerAlternate}
-              disabled={!canEdit}
-              onChange={(e) => setForm({ ...form, unitsPerAlternate: e.target.value })}
-              placeholder="e.g. 6"
-            />
-          </div>
-          {conversion && (
-            <p className="md:col-span-2 text-sm font-medium text-brand-700">{conversion}</p>
-          )}
+          <PackingDerivedFields
+            packingSize={form.packingSize}
+            unitsPerCase={form.unitsPerAlternate}
+            pricePerUnit={Number.isFinite(pricePerUnit as number) ? pricePerUnit : null}
+            disabled={!canEdit}
+            onUnitsPerCaseChange={(value) =>
+              setForm({ ...form, unitsPerAlternate: value })
+            }
+          />
         </CardContent>
       </Card>
 
@@ -483,7 +477,7 @@ export default function ProductDetailPage() {
 
       {canEdit && (
         <div className="flex justify-end gap-4">
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving || Boolean(unitsPerCaseError)}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-2 h-4 w-4" />
             Save changes

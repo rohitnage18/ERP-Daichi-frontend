@@ -6,7 +6,8 @@
     "dev": "npx next dev",
     "build": "npx next build",
     "start": "npx next start",
-    "lint": "npx next lint"
+    "lint": "npx next lint",
+    "test": "npx tsx --test src/lib/packing-math.test.ts src/lib/dealer-grade.test.ts src/lib/billing-qty.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.6.0",

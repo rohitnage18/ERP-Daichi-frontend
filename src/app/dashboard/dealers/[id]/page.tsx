@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { GradeBadge } from "@/components/shared/GradeBadge";
 import { ArrowLeft, Download, Upload } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
+import { gradeFromCreditLimit } from "@/lib/dealer-grade";
 
 interface DaichiDealerDetail {
   id: string;
@@ -18,6 +20,8 @@ interface DaichiDealerDetail {
   sourceCreatedAt: string | null;
   sourceUpdatedAt: string | null;
   lastSyncedAt: string;
+  creditLimit?: number | null;
+  dealerGrade?: string | null;
   firmName: string | null;
   firmAddress: string | null;
   mobileNumber: string | null;
@@ -296,6 +300,9 @@ export default function DealerDetailPage() {
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold">{dealer.firmName || "Unnamed Dealer"}</h1>
               <StatusBadge status={dealer.syncStatus} />
+              <GradeBadge
+                grade={dealer.dealerGrade || gradeFromCreditLimit(dealer.creditLimit)}
+              />
             </div>
             <p className="text-muted-foreground">
               Live synced dealer data for ERP
@@ -347,6 +354,18 @@ export default function DealerDetailPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">PAN / Aadhar</p>
                   <p className="font-medium">{dealer.panNumber || "-"} / {dealer.aadharNumber || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Credit Limit</p>
+                  <p className="font-medium">
+                    {dealer.creditLimit != null ? formatCurrency(dealer.creditLimit) : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Grade</p>
+                  <GradeBadge
+                    grade={dealer.dealerGrade || gradeFromCreditLimit(dealer.creditLimit)}
+                  />
                 </div>
               </div>
               <Separator />

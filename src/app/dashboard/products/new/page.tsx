@@ -24,9 +24,12 @@ import {
   PACKING_TYPE_OPTIONS,
   PackingType,
   UNIT_OF_MEASURE_OPTIONS,
-  conversionLabel,
 } from "@/lib/packaging";
 import { ProductCategorySelect } from "@/components/products/ProductCategorySelect";
+import {
+  PackingDerivedFields,
+  packingUnitsError,
+} from "@/components/products/PackingDerivedFields";
 
 interface CategoryOption {
   id: string;
@@ -70,12 +73,8 @@ export default function NewProductPage() {
   }, []);
 
   const packingSizes = formData.packingType ? PACKING_SIZES[formData.packingType] : [];
-  const conversion = conversionLabel(
-    formData.alternateUnit,
-    formData.unitsPerAlternate,
-    formData.unitOfMeasure,
-    formData.packingSize
-  );
+  const unitsPerCaseError = packingUnitsError(formData.unitsPerAlternate);
+  const pricePerUnit = formData.basePrice ? parseFloat(formData.basePrice) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -273,20 +272,14 @@ export default function NewProductPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="unitsPerAlternate">Units per {formData.alternateUnit || "Alternate"}</Label>
-              <Input
-                id="unitsPerAlternate"
-                type="number"
-                min={1}
-                value={formData.unitsPerAlternate}
-                onChange={(e) => setFormData({ ...formData, unitsPerAlternate: e.target.value })}
-                placeholder="e.g. 6"
-              />
-            </div>
-            {conversion && (
-              <p className="md:col-span-2 text-sm font-medium text-brand-700">{conversion}</p>
-            )}
+            <PackingDerivedFields
+              packingSize={formData.packingSize}
+              unitsPerCase={formData.unitsPerAlternate}
+              pricePerUnit={Number.isFinite(pricePerUnit as number) ? pricePerUnit : null}
+              onUnitsPerCaseChange={(value) =>
+                setFormData({ ...formData, unitsPerAlternate: value })
+              }
+            />
           </CardContent>
         </Card>
 
@@ -380,7 +373,7 @@ export default function NewProductPage() {
         </Card>
 
         <div className="flex justify-end gap-4">
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading || Boolean(unitsPerCaseError)}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-2 h-4 w-4" />
             Save Product

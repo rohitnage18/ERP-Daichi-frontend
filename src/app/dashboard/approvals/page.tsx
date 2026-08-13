@@ -22,13 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -36,13 +29,8 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Loader2, Receipt } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { apiFetchJsonArray } from "@/lib/api";
-
-const GRADE_OPTIONS = [
-  { grade: "A", label: "Grade A — ₹5 Lakhs+", limit: 500000 },
-  { grade: "B", label: "Grade B — ₹4 Lakhs+", limit: 400000 },
-  { grade: "C", label: "Grade C — ₹3 Lakhs+", limit: 300000 },
-  { grade: "D", label: "Grade D — ₹2 Lakhs+", limit: 200000 },
-] as const;
+import { gradeFromCreditLimit } from "@/lib/dealer-grade";
+import { GradeBadge } from "@/components/shared/GradeBadge";
 
 interface PendingDealer {
   id: string;
@@ -144,8 +132,8 @@ export default function ApprovalsPage() {
     open: false,
     dealer: null,
   });
-  const [dealerGrade, setDealerGrade] = useState<string>("D");
   const [creditLimit, setCreditLimit] = useState<string>("200000");
+  const liveGrade = gradeFromCreditLimit(creditLimit);
   const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
@@ -214,14 +202,7 @@ export default function ApprovalsPage() {
 
   const openApproveDialog = (dealer: PendingDealer) => {
     setApproveDialog({ open: true, dealer });
-    setDealerGrade("D");
     setCreditLimit("200000");
-  };
-
-  const handleGradeChange = (grade: string) => {
-    setDealerGrade(grade);
-    const option = GRADE_OPTIONS.find((g) => g.grade === grade);
-    if (option) setCreditLimit(String(option.limit));
   };
 
   const handleApproveDealer = async () => {
@@ -236,8 +217,7 @@ export default function ApprovalsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dealerGrade,
-          creditLimit: parseInt(creditLimit, 10) || 200000,
+          creditLimit: parseInt(creditLimit, 10) || 0,
         }),
       });
       if (res.ok) {
@@ -705,29 +685,22 @@ export default function ApprovalsPage() {
                 <p><strong>Email:</strong> {approveDialog.dealer.email || '—'}</p>
               </div>
               <div className="space-y-2">
-                <Label>Dealer Grade *</Label>
-                <Select value={dealerGrade} onValueChange={handleGradeChange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GRADE_OPTIONS.map((g) => (
-                      <SelectItem key={g.grade} value={g.grade}>{g.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Credit Limit (₹)</Label>
+                <Label>Credit Limit (₹) *</Label>
                 <Input
                   type="number"
                   value={creditLimit}
                   onChange={(e) => setCreditLimit(e.target.value)}
                   min={0}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Auto-filled from grade. You can adjust if needed.
-                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Grade (from credit limit)</Label>
+                <div className="flex items-center gap-2">
+                  <GradeBadge grade={liveGrade} />
+                  <span className="text-xs text-muted-foreground">
+                    Recalculates as you type. Saved grade is always computed on the server.
+                  </span>
+                </div>
               </div>
             </div>
           )}

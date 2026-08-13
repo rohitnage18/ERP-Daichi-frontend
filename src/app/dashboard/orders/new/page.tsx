@@ -32,6 +32,12 @@ import {
 import { ArrowLeft, Loader2, Plus, Trash2, Send, Save, Check, ChevronsUpDown, Search } from "lucide-react";
 import Link from "next/link";
 import { cn, formatCurrency } from "@/lib/utils";
+import { matchesProductSearch } from "@/lib/product-search";
+import {
+  billedUnitsFromCases,
+  casesFromBilledUnits,
+  catalogUnitsPerCase,
+} from "@/lib/invoice-utils";
 
 interface Dealer {
   id: string;
@@ -51,6 +57,7 @@ interface Product {
   gstRate: number;
   unitOfMeasure: string;
   packingSize?: string;
+  lotSize?: string;
   alternateUnit?: string;
   unitsPerAlternate?: number;
 }
@@ -64,15 +71,16 @@ interface OrderItem {
   taxAmount: number;
   totalAmount: number;
   packingSize?: string;
+  lotSize?: string;
   alternateUnit?: string;
   unitsPerAlternate?: number;
+  unitsPerCaseCatalog: number;
 }
 
-function caseLabel(item: OrderItem): string | null {
-  if (!item.unitsPerAlternate || item.unitsPerAlternate <= 0) return null;
-  const cases = item.quantity / item.unitsPerAlternate;
-  if (!Number.isInteger(cases) || cases <= 0) return null;
-  return `${cases} ${item.alternateUnit || "Case"}`;
+function lineTotals(unitPrice: number, gstRate: number, billedUnits: number) {
+  const taxAmount = (unitPrice * gstRate * billedUnits) / 100;
+  const totalAmount = unitPrice * billedUnits + taxAmount;
+  return { taxAmount, totalAmount };
 }
 
 export default function NewOrderPage() {
@@ -122,46 +130,55 @@ export default function NewOrderPage() {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
 
+    const upc = catalogUnitsPerCase(product.unitsPerAlternate, product.lotSize);
+    const oneCaseUnits = billedUnitsFromCases(1, upc);
+
     const existing = items.find((i) => i.productId === productId);
     if (existing) {
-      updateItemQuantity(productId, existing.quantity + 1);
+      const nextQty = existing.quantity + oneCaseUnits;
+      const { taxAmount, totalAmount } = lineTotals(existing.unitPrice, existing.gstRate, nextQty);
+      setItems(
+        items.map((item) =>
+          item.productId === productId ? { ...item, quantity: nextQty, taxAmount, totalAmount } : item
+        )
+      );
       return;
     }
 
-    const taxAmount = (product.basePrice * product.gstRate) / 100;
-    const totalAmount = product.basePrice + taxAmount;
+    const { taxAmount, totalAmount } = lineTotals(product.basePrice, product.gstRate, oneCaseUnits);
 
     setItems([
       ...items,
       {
         productId: product.id,
         productName: product.name,
-        quantity: 1,
+        quantity: oneCaseUnits,
         unitPrice: product.basePrice,
         gstRate: product.gstRate,
         taxAmount,
         totalAmount,
         packingSize: product.packingSize,
+        lotSize: product.lotSize,
         alternateUnit: product.alternateUnit,
-        unitsPerAlternate: product.unitsPerAlternate,
+        unitsPerAlternate: upc,
+        unitsPerCaseCatalog: upc,
       },
     ]);
   };
 
-  const updateItemQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
+  const updateItemQuantity = (productId: string, caseQty: number) => {
+    if (caseQty <= 0) {
       removeItem(productId);
       return;
     }
 
     setItems(
       items.map((item) => {
-        if (item.productId === productId) {
-          const taxAmount = (item.unitPrice * item.gstRate * quantity) / 100;
-          const totalAmount = item.unitPrice * quantity + taxAmount;
-          return { ...item, quantity, taxAmount, totalAmount };
-        }
-        return item;
+        if (item.productId !== productId) return item;
+        const upc = item.unitsPerCaseCatalog || catalogUnitsPerCase(item.unitsPerAlternate, item.lotSize);
+        const billed = billedUnitsFromCases(caseQty, upc);
+        const { taxAmount, totalAmount } = lineTotals(item.unitPrice, item.gstRate, billed);
+        return { ...item, quantity: billed, taxAmount, totalAmount };
       })
     );
   };
@@ -241,12 +258,7 @@ export default function NewOrderPage() {
 
   const filteredProducts = useMemo(() => {
     if (!productSearch) return products;
-    const search = productSearch.toLowerCase();
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(search) ||
-        p.productCode.toLowerCase().includes(search)
-    );
+    return products.filter((p) => matchesProductSearch(p, productSearch));
   }, [products, productSearch]);
 
   return (
@@ -296,7 +308,7 @@ export default function NewOrderPage() {
                 <PopoverContent className="w-[450px] p-0" align="start">
                   <Command shouldFilter={false}>
                     <CommandInput 
-                      placeholder="Search by name or code..." 
+                      placeholder="Search name, NPK, code, or packing..." 
                       value={dealerSearch}
                       onValueChange={setDealerSearch}
                     />
@@ -370,7 +382,7 @@ export default function NewOrderPage() {
                   <PopoverContent className="w-[500px] p-0" align="start">
                     <Command shouldFilter={false}>
                       <CommandInput 
-                        placeholder="Search by name or code..." 
+                        placeholder="Search name, NPK, code, or packing..." 
                         value={productSearch}
                         onValueChange={setProductSearch}
                       />
@@ -410,7 +422,8 @@ export default function NewOrderPage() {
                     <TableRow>
                       <TableHead>Product</TableHead>
                       <TableHead>Packing</TableHead>
-                      <TableHead className="w-[110px]">Quantity</TableHead>
+                      <TableHead className="w-[110px]">Qty</TableHead>
+                      <TableHead className="w-[140px]">Units per Case</TableHead>
                       <TableHead className="text-right">Unit Price</TableHead>
                       <TableHead className="text-right">Tax</TableHead>
                       <TableHead className="text-right">Total</TableHead>
@@ -418,32 +431,34 @@ export default function NewOrderPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {items.map((item) => (
+                    {items.map((item) => {
+                      const upc =
+                        item.unitsPerCaseCatalog ||
+                        catalogUnitsPerCase(item.unitsPerAlternate, item.lotSize);
+                      const caseQty = casesFromBilledUnits(item.quantity, upc);
+                      const totalUnits = billedUnitsFromCases(caseQty, upc);
+                      return (
                       <TableRow key={item.productId}>
                         <TableCell>{item.productName}</TableCell>
                         <TableCell className="text-sm">
                           {item.packingSize || "—"}
-                          {item.unitsPerAlternate ? (
-                            <span className="block text-xs text-muted-foreground">
-                              1 {item.alternateUnit || "Case"} = {item.unitsPerAlternate}
-                            </span>
-                          ) : null}
                         </TableCell>
                         <TableCell>
                           <Input
                             type="number"
                             min="1"
-                            value={item.quantity}
+                            step={1}
+                            value={caseQty}
                             onChange={(e) =>
-                              updateItemQuantity(item.productId, parseInt(e.target.value) || 0)
+                              updateItemQuantity(item.productId, parseInt(e.target.value, 10) || 0)
                             }
                             className="w-20"
                           />
-                          {caseLabel(item) && (
-                            <span className="mt-1 block text-xs text-brand-700">
-                              = {caseLabel(item)}
-                            </span>
-                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex h-10 w-24 items-center rounded-md border bg-muted px-3 text-sm tabular-nums">
+                            {totalUnits}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(item.unitPrice)}
@@ -464,7 +479,8 @@ export default function NewOrderPage() {
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    );
+                    })}
                   </TableBody>
                 </Table>
               ) : (

@@ -23,7 +23,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { GradeBadge } from "@/components/shared/GradeBadge";
+import { gradeFromCreditLimit } from "@/lib/dealer-grade";
 import { Search, Eye, RefreshCw, Loader2, Plus } from "lucide-react";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { formatDate } from "@/lib/utils";
 import { canCreateDealer, canSyncDealers } from "@/lib/permissions";
 
@@ -42,6 +45,8 @@ interface DaichiDealer {
   bankAccounts?: Array<unknown>;
   infrastructures?: Array<unknown>;
   documents?: Array<unknown>;
+  creditLimit?: number;
+  dealerGrade?: string;
   _count?: {
     partners: number;
     bankAccounts: number;
@@ -237,14 +242,16 @@ export default function DealersPage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : filteredDealers.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No dealers found</p>
-              {showNewDealer && (
-                <Button className="mt-4" asChild>
-                  <Link href="/dashboard/dealers/new">Add Your First Dealer</Link>
-                </Button>
-              )}
-            </div>
+            <EmptyState
+              title="No dealers yet"
+              action={
+                showNewDealer ? (
+                  <Button asChild>
+                    <Link href="/dashboard/dealers/new">Add Your First Dealer</Link>
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -255,6 +262,7 @@ export default function DealersPage() {
                   <TableHead>Tax IDs</TableHead>
                   <TableHead>Records</TableHead>
                   <TableHead>Synced</TableHead>
+                  <TableHead>Grade</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">View</TableHead>
                 </TableRow>
@@ -281,6 +289,11 @@ export default function DealersPage() {
                     </TableCell>
                     <TableCell className="text-xs">
                       {formatDate(dealer.sourceUpdatedAt || dealer.lastSyncedAt)}
+                    </TableCell>
+                    <TableCell>
+                      <GradeBadge
+                        grade={dealer.dealerGrade || gradeFromCreditLimit(dealer.creditLimit)}
+                      />
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={dealer.syncStatus} />

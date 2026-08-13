@@ -119,6 +119,37 @@ function formatNumber(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Math.round(n * 1000) / 1000);
 }
 
+/** Catalog units in one case. Missing/invalid → 1 (qty is packing units). */
+export function catalogUnitsPerCase(
+  unitsPerAlternate?: number | null,
+  lotSize?: string
+): number {
+  const upc = resolveUnitsPerCase(unitsPerAlternate, lotSize);
+  return upc && upc > 0 ? upc : 1;
+}
+
+/** Billing qty is cases. Billed packing units = cases × unitsPerCase. */
+export function billedUnitsFromCases(
+  caseQty: number,
+  unitsPerCase: number | null | undefined
+): number {
+  const cases = Math.max(1, Math.floor(Number(caseQty) || 1));
+  const upc = Number(unitsPerCase);
+  const perCase = Number.isFinite(upc) && upc > 0 ? upc : 1;
+  return cases * perCase;
+}
+
+/** Show case count in the qty field from stored packing-unit quantity. */
+export function casesFromBilledUnits(
+  billedUnits: number,
+  unitsPerCase: number | null | undefined
+): number {
+  const upc = Number(unitsPerCase);
+  const qty = Math.max(1, Math.floor(Number(billedUnits) || 1));
+  if (!Number.isFinite(upc) || upc <= 1) return qty;
+  return Math.max(1, Math.round(qty / upc) || 1);
+}
+
 /** Snap qty to whole cases (multiples of units-per-case). */
 export function snapQuantityToCases(quantity: number, unitsPerCase: number | null | undefined): number {
   const upc = Number(unitsPerCase);

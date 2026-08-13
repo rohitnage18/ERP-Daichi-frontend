@@ -39,13 +39,15 @@ import {
 import { apiFetch } from "@/lib/api";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
-  formatCaseLabel,
-  resolveUnitsPerCase,
+  billedUnitsFromCases,
+  casesFromBilledUnits,
+  catalogUnitsPerCase,
   buildLotSize,
   parseUnitsPerCase,
   invoiceUnitOfMeasure,
   DAICHI_SUPPLIER,
 } from "@/lib/invoice-utils";
+import { matchesProductSearch } from "@/lib/product-search";
 import { Plus, Trash2, FileText, Calculator, Check, ChevronsUpDown, Search } from "lucide-react";
 
 interface Dealer {
@@ -96,6 +98,7 @@ interface InvoiceItem {
   packingSize?: string;
   lotSize?: string;
   unitsPerAlternate?: number;
+  unitsPerCaseCatalog: number;
   alternateUnit?: string;
   unitOfMeasure?: string;
   mrp?: number;
@@ -241,7 +244,7 @@ export default function BillingPage() {
     const product = products.find((p) => p.id === selectedProduct);
     if (!product) return;
 
-    const unitsPerCase = resolveUnitsPerCase(product.unitsPerAlternate, product.lotSize) || 1;
+    const unitsPerCase = catalogUnitsPerCase(product.unitsPerAlternate, product.lotSize);
     const alternateUnit =
       parseUnitsPerCase(product.lotSize) != null
         ? "Case"
@@ -251,22 +254,20 @@ export default function BillingPage() {
       null,
       product.lotSize
     );
-    // Prefer catalog lotSize (e.g. 5Kg*3 unit=15 kg); never rewrite legacy "100 Pcs" into a fake case.
     const fromCatalog = parseUnitsPerCase(product.lotSize);
     const lotSize =
       fromCatalog != null && product.lotSize
         ? product.lotSize
         : buildLotSize(product.packingSize, unitsPerCase, product.lotSize, alternateUnit);
-    // Qty is packing units (Nos). Start at 1 pack — price = qty × rate.
-    // Units per Case (3 for 5Kg specialty, 5 for generic, …) only groups cases.
-    const defaultQty = 1;
+    // Qty field = cases. 1 case of 5Kg×3 bills 3 units; 2 cases bill 6.
+    const oneCaseUnits = billedUnitsFromCases(1, unitsPerCase);
 
     const existing = items.find((i) => i.productId === selectedProduct);
     if (existing) {
       setItems(
         items.map((i) =>
           i.productId === selectedProduct
-            ? { ...i, quantity: i.quantity + defaultQty }
+            ? { ...i, quantity: i.quantity + oneCaseUnits }
             : i
         )
       );
@@ -282,10 +283,11 @@ export default function BillingPage() {
           packingSize: product.packingSize || product.unitOfMeasure,
           lotSize,
           unitsPerAlternate: unitsPerCase,
+          unitsPerCaseCatalog: unitsPerCase,
           alternateUnit,
           unitOfMeasure,
           mrp: product.mrp || product.basePrice,
-          quantity: defaultQty,
+          quantity: oneCaseUnits,
           unitPrice: product.basePrice,
           discount: 0,
           gstRate,
@@ -311,23 +313,11 @@ export default function BillingPage() {
           updated.igstRate = 0;
         }
         if (field === "quantity") {
-          const raw = typeof value === "number" ? value : parseInt(String(value), 10) || 1;
-          updated.quantity = Math.max(1, Math.floor(raw));
-        }
-        if (field === "unitsPerAlternate") {
-          const units = typeof value === "number" ? value : parseInt(String(value), 10) || 0;
-          const prevUpc = resolveUnitsPerCase(item.unitsPerAlternate, item.lotSize) || 1;
-          const nextUpc = units > 0 ? units : 1;
-          // Keep same number of cases; qty & line total scale with units-per-case.
-          const cases = Math.max(1, Math.round(item.quantity / prevUpc) || 1);
-          updated.unitsPerAlternate = nextUpc;
-          updated.quantity = cases * nextUpc;
-          updated.lotSize = buildLotSize(
-            item.packingSize,
-            nextUpc,
-            item.lotSize,
-            item.alternateUnit
-          );
+          const cases = typeof value === "number" ? value : parseInt(String(value), 10) || 1;
+          const upc =
+            item.unitsPerCaseCatalog ||
+            catalogUnitsPerCase(item.unitsPerAlternate, item.lotSize);
+          updated.quantity = billedUnitsFromCases(cases, upc);
         }
         return updated;
       })
@@ -454,14 +444,7 @@ export default function BillingPage() {
 
   const filteredProducts = useMemo(() => {
     if (!productSearch) return products;
-    const search = productSearch.toLowerCase();
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(search) ||
-        p.productCode.toLowerCase().includes(search) ||
-        (p.hsnCode || "").toLowerCase().includes(search) ||
-        (p.categoryName || "").toLowerCase().includes(search)
-    );
+    return products.filter((p) => matchesProductSearch(p, productSearch));
   }, [products, productSearch]);
 
   const groupedProducts = useMemo(() => {
@@ -747,7 +730,7 @@ export default function BillingPage() {
             <CardHeader>
               <CardTitle>Invoice Items</CardTitle>
               <CardDescription>
-                Add products — Units per Case (lot size) is taken from the product master
+                Change Qty only. Units per case update automatically and cannot be edited.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -772,7 +755,7 @@ export default function BillingPage() {
                       ) : (
                         <span className="text-muted-foreground flex items-center">
                           <Search className="mr-2 h-4 w-4" />
-                          Search products by name, code, HSN...
+                          Search products by name, NPK, code, or packing...
                         </span>
                       )}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -781,7 +764,7 @@ export default function BillingPage() {
                   <PopoverContent className="w-[600px] p-0" align="start">
                     <Command shouldFilter={false}>
                       <CommandInput 
-                        placeholder="Search by name, code, HSN, or category..." 
+                        placeholder="Search name, code, NPK, packing (e.g. 15:30:15 or 5kg)..." 
                         value={productSearch}
                         onValueChange={setProductSearch}
                       />
@@ -845,8 +828,8 @@ export default function BillingPage() {
                         <TableHead>Product</TableHead>
                         <TableHead>HSN</TableHead>
                         <TableHead>Packing</TableHead>
-                        <TableHead className="w-20">Qty (Nos)</TableHead>
-                        <TableHead className="w-36">Units per Case</TableHead>
+                        <TableHead className="w-20">Qty</TableHead>
+                        <TableHead className="w-40">Units per Case</TableHead>
                         <TableHead className="w-28">Rate/Unit</TableHead>
                         <TableHead className="w-24">Discount</TableHead>
                         <TableHead className="w-20">GST %</TableHead>
@@ -859,8 +842,11 @@ export default function BillingPage() {
                     <TableBody>
                       {items.map((item, index) => {
                         const calc = calculateItemTotal(item);
-                        const unitsPerCase = resolveUnitsPerCase(item.unitsPerAlternate, item.lotSize);
-                        const caseLabel = formatCaseLabel(item.quantity, item.lotSize, item.unitsPerAlternate);
+                        const upc =
+                          item.unitsPerCaseCatalog ||
+                          catalogUnitsPerCase(item.unitsPerAlternate, item.lotSize);
+                        const caseQty = casesFromBilledUnits(item.quantity, upc);
+                        const totalUnits = billedUnitsFromCases(caseQty, upc);
                         return (
                           <TableRow key={index}>
                             <TableCell>
@@ -878,61 +864,17 @@ export default function BillingPage() {
                                 type="number"
                                 min={1}
                                 step={1}
-                                value={item.quantity}
+                                value={caseQty}
                                 onChange={(e) =>
                                   updateItem(index, "quantity", parseInt(e.target.value, 10) || 1)
                                 }
                                 className="w-20"
                               />
-                              <p className="mt-1 text-[10px] text-muted-foreground">
-                                {item.quantity} Nos
-                                {caseLabel ? ` ${caseLabel}` : ""}
-                              </p>
-                              {unitsPerCase && unitsPerCase > 1 ? (
-                                <button
-                                  type="button"
-                                  className="mt-1 text-[10px] text-blue-700 underline"
-                                  onClick={() =>
-                                    updateItem(
-                                      index,
-                                      "quantity",
-                                      item.quantity + unitsPerCase
-                                    )
-                                  }
-                                >
-                                  +1 Case (+{unitsPerCase})
-                                </button>
-                              ) : null}
                             </TableCell>
                             <TableCell>
-                              <Input
-                                type="number"
-                                min="1"
-                                step="1"
-                                value={item.unitsPerAlternate ?? ""}
-                                onChange={(e) =>
-                                  updateItem(
-                                    index,
-                                    "unitsPerAlternate",
-                                    parseInt(e.target.value, 10) || 0
-                                  )
-                                }
-                                placeholder="e.g. 3"
-                                className="w-20"
-                              />
-                              <p className="mt-1 text-[10px] text-muted-foreground">
-                                {item.lotSize || "—"}
-                              </p>
-                              {unitsPerCase ? (
-                                <p className="text-[10px] font-medium text-foreground">
-                                  Case rate:{" "}
-                                  {(unitsPerCase * item.unitPrice).toLocaleString("en-IN", {
-                                    style: "currency",
-                                    currency: "INR",
-                                    maximumFractionDigits: 2,
-                                  })}
-                                </p>
-                              ) : null}
+                              <div className="flex h-10 w-24 items-center rounded-md border bg-muted px-3 text-sm tabular-nums">
+                                {totalUnits}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Input

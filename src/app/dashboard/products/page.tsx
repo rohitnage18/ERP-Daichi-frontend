@@ -15,7 +15,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Package, RefreshCw, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Search, RefreshCw, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { matchesProductSearch } from "@/lib/product-search";
 import { formatCurrency } from "@/lib/utils";
 import { canCreateProduct } from "@/lib/permissions";
 import {
@@ -65,7 +67,7 @@ export default function ProductsPage() {
   const fetchProducts = useCallback(async (showRefreshIndicator = false) => {
     if (showRefreshIndicator) setRefreshing(true);
     try {
-      const res = await apiFetch("/api/products?status=all");
+      const res = await apiFetch("/api/products");
       const data = await res.json();
       setProducts(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -92,12 +94,10 @@ export default function ProductsPage() {
     fetchProducts(true);
   };
 
-  const filteredProducts = useMemo(() => products.filter(
-    (product) =>
-      product.name.toLowerCase().includes(search.toLowerCase()) ||
-      product.productCode.toLowerCase().includes(search.toLowerCase()) ||
-      (product.hsnCode?.toLowerCase() || "").includes(search.toLowerCase())
-  ), [products, search]);
+  const filteredProducts = useMemo(
+    () => products.filter((product) => matchesProductSearch(product, search)),
+    [products, search]
+  );
 
   const groupedProducts = useMemo(() => {
     return filteredProducts.reduce((acc: GroupedProducts, product) => {
@@ -121,8 +121,12 @@ export default function ProductsPage() {
   };
 
   const categoryOrder = [
-    "Primary Nutrients (N:P:K)",
+    "Speciality Water Soluble Fertilizer Grades",
+    "Generic/Secondary Water Soluble Fertilizer Grades",
     "Secondary Nutrients",
+    "Micro Nutrients",
+    "Water Soluble Liquid Fertilizer Grades",
+    "Primary Nutrients (N:P:K)",
     "Micronutrients",
     "Liquid water-soluble fertilizer (WSF)",
     "Secondary liquid water-soluble fertilizer",
@@ -183,7 +187,7 @@ export default function ProductsPage() {
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search by name, code, or HSN..."
+          placeholder="Search name, NPK, code, or packing..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9 max-w-md"
@@ -197,15 +201,16 @@ export default function ProductsPage() {
       ) : filteredProducts.length === 0 ? (
         <Card>
           <CardContent className="py-8">
-            <div className="text-center">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No products found</p>
-              {showAddProduct && (
-                <Button className="mt-4" asChild>
-                  <Link href="/dashboard/products/new">Add Your First Product</Link>
-                </Button>
-              )}
-            </div>
+            <EmptyState
+              title="No products found"
+              action={
+                showAddProduct ? (
+                  <Button asChild>
+                    <Link href="/dashboard/products/new">Add Your First Product</Link>
+                  </Button>
+                ) : undefined
+              }
+            />
           </CardContent>
         </Card>
       ) : (
