@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -13,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 
@@ -53,17 +51,10 @@ export default function ProductReportPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/reports">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
+        <div>
             <h1 className="text-3xl font-bold">Product Analysis</h1>
             <p className="text-muted-foreground">Top products by invoice revenue</p>
           </div>
-        </div>
         <Input
           type="month"
           value={month}

@@ -60,9 +60,11 @@ export default function DashboardLayout({
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden print:block print:overflow-visible">
           <Header />
-          <HeaderBackButton />
-          <main className="app-main flex-1 overflow-y-auto bg-gradient-to-b from-background to-muted/30 p-3 sm:p-4 md:p-6 print:overflow-visible print:bg-white print:p-0">
-            {children}
+          <main className="app-main flex-1 overflow-y-auto bg-gradient-to-b from-background to-muted/30 print:overflow-visible print:bg-white print:p-0">
+            <div className="p-3 sm:p-4 md:p-6 print:p-0">
+              <HeaderBackButton />
+              {children}
+            </div>
           </main>
         </div>
       </div>

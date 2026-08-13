@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Mail, UserPlus } from "lucide-react";
+import { Loader2, Mail, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -41,6 +40,8 @@ export default function EmailSettingsPage() {
   const [tab, setTab] = useState<"invite" | "send" | "report" | "logs">("invite");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageKind, setMessageKind] = useState<"ok" | "error">("ok");
+  const [canResend, setCanResend] = useState(false);
   const [smtpConfigured, setSmtpConfigured] = useState<boolean | null>(null);
   const [emailProvider, setEmailProvider] = useState<string | null>(null);
   const [emailFrom, setEmailFrom] = useState<string | null>(null);
@@ -78,31 +79,51 @@ export default function EmailSettingsPage() {
       .catch(() => setEmailLogs([]));
   }, []);
 
-  const showMsg = (text: string) => {
+  const showMsg = (text: string, kind: "ok" | "error" = "ok") => {
     setMessage(text);
-    setTimeout(() => setMessage(null), 6000);
+    setMessageKind(kind);
+    setTimeout(() => setMessage(null), 8000);
   };
 
-  const submitInvite = async (e: React.FormEvent) => {
+  const submitInvite = async (e: React.FormEvent, resend = false) => {
     e.preventDefault();
     setLoading(true);
+    setCanResend(false);
     try {
       const res = await apiFetch("/api/emails/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(invite),
+        body: JSON.stringify({
+          ...invite,
+          email: invite.email.trim().toLowerCase(),
+          employeeId: invite.employeeId.trim(),
+          resend,
+        }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        const tempHint = data.temporaryPassword
+          ? ` Temporary password: ${data.temporaryPassword} (email not sent — share this manually).`
+          : "";
         showMsg(
-          data.emailResult?.simulated
-            ? `User created. Temporary password: ${data.temporaryPassword} (SMTP not configured — share manually)`
-            : "Invitation email sent successfully."
+          data.resent
+            ? `Login details resent to ${data.user?.email || invite.email}.${tempHint}`
+            : data.emailResult?.simulated
+              ? `User created. Temporary password: ${data.temporaryPassword} (SMTP not configured — share manually)`
+              : "Invitation email sent successfully."
         );
-        setInvite({ fullName: "", email: "", phone: "", employeeId: "", role: "SALES_MARKETING", zoneId: "" });
-      } else showMsg(data.error || "Failed");
+        if (!data.resent) {
+          setInvite({ fullName: "", email: "", phone: "", employeeId: "", role: "SALES_MARKETING", zoneId: "" });
+        }
+        setCanResend(false);
+      } else if (res.status === 409 && data.code === "EMAIL_EXISTS") {
+        setCanResend(true);
+        showMsg(data.error || "This email is already registered.", "error");
+      } else {
+        showMsg(data.error || "Could not send invite.", "error");
+      }
     } catch {
-      showMsg("Network error");
+      showMsg("Network error. Try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -162,20 +183,34 @@ export default function EmailSettingsPage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/settings">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
+      <div>
           <h1 className="text-3xl font-bold">Email & invitations</h1>
           <p className="text-muted-foreground">Invite staff and send management reports</p>
         </div>
-      </div>
 
       {message && (
-        <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm">{message}</div>
+        <div
+          className={
+            messageKind === "error"
+              ? "rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+              : "rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm"
+          }
+        >
+          <p>{message}</p>
+          {canResend && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              disabled={loading}
+              onClick={(e) => void submitInvite(e, true)}
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Resend login details
+            </Button>
+          )}
+        </div>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -216,7 +251,7 @@ export default function EmailSettingsPage() {
             <CardDescription>Creates account and emails login details</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={submitInvite} className="space-y-4">
+            <form onSubmit={(e) => void submitInvite(e, false)} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Full name *</Label>
@@ -241,6 +276,7 @@ export default function EmailSettingsPage() {
                     <SelectContent>
                       <SelectItem value="SALES_MARKETING">Sales & Marketing</SelectItem>
                       <SelectItem value="PRODUCTION_LOGISTICS">Production & Logistics</SelectItem>
+                      <SelectItem value="ACCOUNT">Accounts & Finance</SelectItem>
                       <SelectItem value="MANAGEMENT_ADMIN">Management Admin</SelectItem>
                     </SelectContent>
                   </Select>

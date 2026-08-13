@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { apiFetch } from "@/lib/api";
-import { ArrowLeft, Download, FileJson, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Download, FileJson, FileSpreadsheet, Loader2 } from "lucide-react";
 
 export default function GSTNExportPage() {
   const [startDate, setStartDate] = useState("");
@@ -101,19 +100,12 @@ export default function GSTNExportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/dashboard/billing">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
+      <div>
           <h1 className="text-2xl font-bold tracking-tight">GSTN Export</h1>
           <p className="text-muted-foreground">
             Export invoices for GST filing in Excel and JSON formats
           </p>
         </div>
-      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>

@@ -12,8 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download } from "lucide-react";
-import Link from "next/link";
+import { Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface ZoneRow {
@@ -54,17 +53,10 @@ export default function SalesReportPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/reports">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
+        <div>
             <h1 className="text-3xl font-bold">Sales Report</h1>
             <p className="text-muted-foreground">Zone-wise sales from live orders</p>
           </div>
-        </div>
         <Button variant="outline" onClick={exportCsv} disabled={salesData.length === 0}>
           <Download className="mr-2 h-4 w-4" />
           Export CSV

@@ -13,8 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download } from "lucide-react";
-import Link from "next/link";
+import { Download } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 interface AgingRow {
@@ -67,17 +66,10 @@ export default function AgingReportPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/reports">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
+        <div>
             <h1 className="text-3xl font-bold">Aging Report</h1>
             <p className="text-muted-foreground">Outstanding invoices from live data</p>
           </div>
-        </div>
         <Button variant="outline" onClick={exportCsv} disabled={agingData.length === 0}>
           <Download className="mr-2 h-4 w-4" />
           Export CSV

@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { GradeBadge } from "@/components/shared/GradeBadge";
-import { ArrowLeft, Download, Upload } from "lucide-react";
+import { Download, Upload } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { gradeFromCreditLimit } from "@/lib/dealer-grade";
@@ -280,9 +279,6 @@ export default function DealerDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">Dealer not found</p>
-        <Link href="/dashboard/dealers">
-          <Button className="mt-4">Back to Dealers</Button>
-        </Link>
       </div>
     );
   }
@@ -290,13 +286,7 @@ export default function DealerDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/dealers">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
+        <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold">{dealer.firmName || "Unnamed Dealer"}</h1>
               <StatusBadge status={dealer.syncStatus} />
@@ -307,7 +297,6 @@ export default function DealerDetailPage() {
             <p className="text-muted-foreground">
               Live synced dealer data for ERP
             </p>
-          </div>
         </div>
       </div>
 

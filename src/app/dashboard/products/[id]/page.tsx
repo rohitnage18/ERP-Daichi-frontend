@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { canCreateProduct } from "@/lib/permissions";
 import {
@@ -196,31 +195,21 @@ export default function ProductDetailPage() {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-bold">Product not found</h1>
-        <Button variant="outline" asChild>
-          <Link href="/dashboard/products">Back to Products</Link>
-        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/products">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold">{form.name || "Product"}</h1>
-          <p className="text-muted-foreground">
+      <div>
+        <h1 className="text-3xl font-bold">{form.name || "Product"}</h1>
+        <p className="text-muted-foreground">
             Stock remaining:{" "}
             <span className={stockRemaining <= Number(reorderLevel) ? "font-semibold text-amber-700" : "font-semibold"}>
               {stockRemaining} Nos
             </span>
           </p>
         </div>
-      </div>
 
       <Card>
         <CardHeader>

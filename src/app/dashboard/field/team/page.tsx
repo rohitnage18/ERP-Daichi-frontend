@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 
@@ -44,14 +42,15 @@ export default function TeamFieldPage() {
   useEffect(() => {
     setLoading(true);
     const params = new URLSearchParams();
+    params.set("scope", "team");
     if (userId !== "all") params.set("userId", userId);
     params.set("from", `${date}T00:00:00.000Z`);
     params.set("to", `${date}T23:59:59.999Z`);
-    const q = params.toString() ? `?${params.toString()}` : "";
+    const q = `?${params.toString()}`;
     Promise.all([
-      apiFetch(`/api/daily-logs${userId !== "all" ? `?userId=${userId}` : ""}`).then((r) => r.json()),
+      apiFetch(`/api/daily-logs?${params.toString()}`).then((r) => r.json()),
       apiFetch(`/api/visits${q}`).then((r) => r.json()),
-      apiFetch(`/api/allowances?status=PENDING`).then((r) => r.json()),
+      apiFetch(`/api/allowances?status=PENDING&scope=team`).then((r) => r.json()),
     ])
       .then(([l, v, a]) => {
         setLogs(Array.isArray(l) ? l : []);
@@ -67,22 +66,15 @@ export default function TeamFieldPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status }),
     });
-    const res = await apiFetch("/api/allowances?status=PENDING");
+    const res = await apiFetch("/api/allowances?status=PENDING&scope=team");
     setAllowances(await res.json());
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/reports">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold">Team field activity</h1>
-          <p className="text-muted-foreground">Daily logs, visits, and allowance approvals</p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">Team field activity</h1>
+        <p className="text-muted-foreground">Daily logs, visits, and allowance approvals</p>
       </div>
 
       <div className="flex flex-wrap gap-4">

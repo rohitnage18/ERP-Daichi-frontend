@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Save, Plus, X } from "lucide-react";
+import { Loader2, Save, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Product {
@@ -105,19 +104,12 @@ export default function NewRecommendationPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/recommendations">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
+      <div>
           <h1 className="text-3xl font-bold">New Sales Promotion Activity</h1>
           <p className="text-muted-foreground">
             Log a recommendation, field work, demo, farmer meeting or campaign
           </p>
         </div>
-      </div>
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-2">

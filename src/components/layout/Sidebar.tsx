@@ -29,7 +29,7 @@ import {
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "PRODUCTION_LOGISTICS", "ACCOUNT"] },
-  { name: "Field work", href: "/dashboard/field", icon: MapPinned, roles: ["SALES_MARKETING"] },
+  { name: "Field work", href: "/dashboard/field", icon: MapPinned, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN"] },
   { name: "Field team", href: "/dashboard/field/team", icon: MapPinned, roles: ["MANAGEMENT_ADMIN"] },
   { name: "Dealers", href: "/dashboard/dealers", icon: Users, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "ACCOUNT"] },
   { name: "Products", href: "/dashboard/products", icon: Package, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "PRODUCTION_LOGISTICS", "ACCOUNT"] },
@@ -49,19 +49,28 @@ const navigation = [
   { name: "Settings", href: "/dashboard/settings", icon: Settings, roles: ["MANAGEMENT_ADMIN"] },
 ];
 
+function pathMatches(pathname: string, href: string) {
+  if (href === "/dashboard") return pathname === "/dashboard";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/** Highlight only the most specific nav item so parent + child are not both selected. */
+function isNavItemActive(pathname: string, href: string, allHrefs: string[]) {
+  if (!pathMatches(pathname, href)) return false;
+  return !allHrefs.some((other) => other !== href && other.startsWith(`${href}/`) && pathMatches(pathname, other));
+}
+
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const userRole = session?.user?.role || "";
   const filteredNavigation = navigation.filter((item) => item.roles.includes(userRole));
+  const navHrefs = filteredNavigation.map((item) => item.href);
 
   return (
     <nav className="flex-1 space-y-0.5 overflow-y-auto p-3 no-scrollbar">
       {filteredNavigation.map((item) => {
-        const isActive =
-          item.href === "/dashboard"
-            ? pathname === "/dashboard"
-            : pathname === item.href || pathname.startsWith(item.href + "/");
+        const isActive = isNavItemActive(pathname, item.href, navHrefs);
         return (
           <Link
             key={item.name}

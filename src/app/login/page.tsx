@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, User, Lock, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/branding/Logo";
 import { wakeApi } from "@/lib/keepalive";
+import { apiUrl } from "@/lib/api";
 
 function formatSignInError(error: string): string {
   const decoded = decodeURIComponent(error);
@@ -38,10 +39,28 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [companyStats, setCompanyStats] = useState<{
+    districtsCovered: number;
+    activeDealers: number;
+    products: number;
+  } | null>(null);
 
   // Wake Render free-tier while user types credentials
   useEffect(() => {
     wakeApi();
+    fetch(apiUrl("/api/public/stats"))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (
+          data &&
+          typeof data.districtsCovered === "number" &&
+          typeof data.activeDealers === "number" &&
+          typeof data.products === "number"
+        ) {
+          setCompanyStats(data);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -124,17 +143,23 @@ export default function LoginPage() {
             </p>
             <div className="flex items-center gap-8 pt-4">
               <div>
-                <p className="text-3xl font-bold text-white">36+</p>
+                <p className="text-3xl font-bold text-white">
+                  {companyStats ? companyStats.districtsCovered.toLocaleString("en-IN") : "—"}
+                </p>
                 <p className="text-sm text-white/80">Districts Covered</p>
               </div>
               <div className="h-12 w-px bg-white/25" />
               <div>
-                <p className="text-3xl font-bold text-white">500+</p>
+                <p className="text-3xl font-bold text-white">
+                  {companyStats ? companyStats.activeDealers.toLocaleString("en-IN") : "—"}
+                </p>
                 <p className="text-sm text-white/80">Active Dealers</p>
               </div>
               <div className="h-12 w-px bg-white/25" />
               <div>
-                <p className="text-3xl font-bold text-white">50+</p>
+                <p className="text-3xl font-bold text-white">
+                  {companyStats ? companyStats.products.toLocaleString("en-IN") : "—"}
+                </p>
                 <p className="text-sm text-white/80">Products</p>
               </div>
             </div>

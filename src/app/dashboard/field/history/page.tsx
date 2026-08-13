@@ -1,14 +1,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { apiFetch } from "@/lib/api";
+import { apiFetchJsonArray } from "@/lib/api";
+
+const purposeLabels: Record<string, string> = {
+  ORDER_FOLLOWUP: "Order follow-up",
+  COLLECTION: "Collection",
+  NEW_DEALER: "New dealer",
+  PRODUCT_DEMO: "Product demo",
+  COMPLAINT: "Complaint",
+  OTHER: "Other",
+};
+
+const claimLabels: Record<string, string> = {
+  TRAVEL: "Travel / fuel",
+  DA: "Daily allowance",
+  FOOD: "Food",
+  LODGING: "Lodging",
+  OTHER: "Other",
+};
+
+function Detail({ label, value }: { label: string; value?: string | number | null }) {
+  if (value == null || value === "") return null;
+  return (
+    <p>
+      <span className="text-muted-foreground">{label}: </span>
+      <span className="font-medium">{value}</span>
+    </p>
+  );
+}
 
 export default function FieldHistoryPage() {
   const [logs, setLogs] = useState<any[]>([]);
@@ -18,32 +42,33 @@ export default function FieldHistoryPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([
-      apiFetch("/api/daily-logs").then((r) => r.json()),
-      apiFetch("/api/visits").then((r) => r.json()),
-      apiFetch("/api/allowances").then((r) => r.json()),
-      apiFetch(`/api/location?date=${new Date().toISOString().slice(0, 10)}`).then((r) =>
-        r.json()
-      ),
+      apiFetchJsonArray("/api/daily-logs"),
+      apiFetchJsonArray("/api/visits"),
+      apiFetchJsonArray("/api/allowances"),
+      apiFetchJsonArray("/api/location"),
     ])
       .then(([l, v, a, t]) => {
-        setLogs(Array.isArray(l) ? l : []);
-        setVisits(Array.isArray(v) ? v : []);
-        setAllowances(Array.isArray(a) ? a : []);
-        setTracks(Array.isArray(t) ? t : []);
+        if (cancelled) return;
+        setLogs(l);
+        setVisits(v);
+        setAllowances(a);
+        setTracks(t);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard/field">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
+      <div>
         <h1 className="text-2xl font-bold">My field history</h1>
+        <p className="text-muted-foreground">Everything you submitted — logs, visits, claims, and GPS</p>
       </div>
 
       {loading ? (
@@ -53,84 +78,121 @@ export default function FieldHistoryPage() {
       ) : (
         <Tabs defaultValue="logs">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="logs">Logs</TabsTrigger>
-            <TabsTrigger value="visits">Visits</TabsTrigger>
-            <TabsTrigger value="allowances">Claims</TabsTrigger>
-            <TabsTrigger value="location">GPS</TabsTrigger>
+            <TabsTrigger value="logs">Logs ({logs.length})</TabsTrigger>
+            <TabsTrigger value="visits">Visits ({visits.length})</TabsTrigger>
+            <TabsTrigger value="allowances">Claims ({allowances.length})</TabsTrigger>
+            <TabsTrigger value="location">GPS ({tracks.length})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="logs" className="space-y-3 mt-4">
+          <TabsContent value="logs" className="mt-4 space-y-3">
             {logs.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No daily logs yet.</p>
+              <p className="py-8 text-center text-muted-foreground">No daily logs yet. Submit one from Daily work log.</p>
             ) : (
               logs.map((log) => (
-                <Card key={log.id}>
+                <Card key={log.id || log._id}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">{formatDate(log.logDate)}</CardTitle>
+                    <p className="text-xs text-muted-foreground">Saved {formatDateTime(log.updatedAt || log.createdAt)}</p>
                   </CardHeader>
-                  <CardContent className="text-sm space-y-1">
+                  <CardContent className="space-y-1 text-sm">
                     <p>{log.summary}</p>
-                    <p className="text-muted-foreground">
-                      {log.dealersVisited} dealers · {log.kilometersTraveled ?? "—"} km
-                    </p>
+                    <Detail label="Dealers visited" value={log.dealersVisited} />
+                    <Detail label="Orders discussed" value={log.ordersDiscussed} />
+                    <Detail
+                      label="Travel"
+                      value={
+                        log.kilometersTraveled != null
+                          ? `${log.kilometersTraveled} km`
+                          : log.openingKm != null || log.closingKm != null
+                            ? `${log.openingKm ?? "—"} → ${log.closingKm ?? "—"} km`
+                            : null
+                      }
+                    />
+                    {log.salesAmount != null && <Detail label="Sales" value={formatCurrency(log.salesAmount)} />}
+                    {log.collectionAmount != null && (
+                      <Detail label="Collection" value={formatCurrency(log.collectionAmount)} />
+                    )}
+                    <Detail label="New dealers" value={log.newDealersAppointed} />
+                    <Detail label="Notes" value={log.achievementNotes} />
+                    <Detail label="Expenses" value={log.expensesSummary} />
+                    {log.latitude != null && (
+                      <p className="text-xs text-brand-600">
+                        📍 {Number(log.latitude).toFixed(4)}, {Number(log.longitude).toFixed(4)}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               ))
             )}
           </TabsContent>
 
-          <TabsContent value="visits" className="space-y-3 mt-4">
-            {visits.map((v) => (
-              <Card key={v.id}>
-                <CardContent className="pt-4 text-sm">
-                  <p className="font-medium">
-                    {v.dealer?.firmName || v.prospectName || "Visit"} — {v.purpose}
-                  </p>
-                  <p className="text-muted-foreground">{formatDate(v.visitDate)}</p>
-                  <p className="mt-1">{v.discussionNotes}</p>
-                  {v.latitude != null && (
-                    <p className="text-xs text-brand-600 mt-1">
-                      📍 {v.latitude.toFixed(4)}, {v.longitude.toFixed(4)}
+          <TabsContent value="visits" className="mt-4 space-y-3">
+            {visits.length === 0 ? (
+              <p className="py-8 text-center text-muted-foreground">No dealer visits yet. Log one from Dealer visit.</p>
+            ) : (
+              visits.map((v) => (
+                <Card key={v.id || v._id}>
+                  <CardContent className="space-y-1 pt-4 text-sm">
+                    <p className="font-medium">
+                      {v.dealer?.firmName || v.dealerName || v.prospectName || "Visit"}
                     </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                    <p className="text-muted-foreground">
+                      {formatDateTime(v.visitDate)} · {purposeLabels[v.purpose] || v.purpose}
+                    </p>
+                    <Detail label="Persons met" value={v.personsMet} />
+                    <p className="mt-1">{v.discussionNotes}</p>
+                    <Detail label="Next action" value={v.nextAction} />
+                    {v.latitude != null && (
+                      <p className="mt-1 text-xs text-brand-600">
+                        📍 {Number(v.latitude).toFixed(4)}, {Number(v.longitude).toFixed(4)}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </TabsContent>
 
-          <TabsContent value="allowances" className="space-y-3 mt-4">
-            {allowances.map((c) => (
-              <Card key={c.id}>
-                <CardContent className="pt-4 flex justify-between items-start">
-                  <div>
-                    <p className="font-medium">{c.claimType}</p>
-                    <p className="text-sm text-muted-foreground">{formatDate(c.claimDate)}</p>
-                    <p className="text-sm mt-1">{c.description}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold">{formatCurrency(c.amount)}</p>
-                    <StatusBadge status={c.status} />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <TabsContent value="allowances" className="mt-4 space-y-3">
+            {allowances.length === 0 ? (
+              <p className="py-8 text-center text-muted-foreground">No allowance claims yet. Submit one from Allowance claim.</p>
+            ) : (
+              allowances.map((c) => (
+                <Card key={c.id || c._id}>
+                  <CardContent className="flex items-start justify-between gap-4 pt-4">
+                    <div className="space-y-1 text-sm">
+                      <p className="font-medium">{claimLabels[c.claimType] || c.claimType}</p>
+                      <p className="text-muted-foreground">{formatDateTime(c.claimDate || c.createdAt)}</p>
+                      <p>{c.description}</p>
+                      {c.kilometers != null && <Detail label="Kilometers" value={c.kilometers} />}
+                      <Detail label="Receipt note" value={c.receiptNote} />
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-bold">{formatCurrency(Number(c.amount) || 0)}</p>
+                      <StatusBadge status={c.status} />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </TabsContent>
 
-          <TabsContent value="location" className="space-y-3 mt-4">
+          <TabsContent value="location" className="mt-4 space-y-3">
             {tracks.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                No GPS points today. Capture location on a visit.
+              <p className="py-8 text-center text-muted-foreground">
+                No GPS points yet. Capture location on a visit, daily log, or claim.
               </p>
             ) : (
               tracks.map((t) => (
-                <Card key={t.id}>
+                <Card key={t.id || t._id}>
                   <CardContent className="pt-4 text-sm">
                     <p>
-                      {new Date(t.recordedAt).toLocaleTimeString("en-IN")} — {t.source}
+                      {formatDateTime(t.recordedAt)} — {t.source}
                     </p>
                     <p className="font-mono text-xs">
-                      {t.latitude.toFixed(5)}, {t.longitude.toFixed(5)}
+                      {Number(t.latitude).toFixed(5)}, {Number(t.longitude).toFixed(5)}
                     </p>
+                    {t.addressLabel && <p className="text-muted-foreground">{t.addressLabel}</p>}
                   </CardContent>
                 </Card>
               ))

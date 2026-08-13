@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Search, FileText, Download, Eye } from "lucide-react";
+import { Search, FileText, Printer } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
 
@@ -215,12 +215,12 @@ export default function InvoicesPage() {
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="icon" asChild title="View invoice">
                           <Link href={`/dashboard/finance/invoices/${invoice.id}`}>
-                            <Eye className="h-4 w-4" />
+                            <FileText className="h-4 w-4" />
                           </Link>
                         </Button>
                         <Button variant="ghost" size="icon" asChild title="Print / PDF">
                           <Link href={`/print/invoices/${invoice.id}`} target="_blank">
-                            <Download className="h-4 w-4" />
+                            <Printer className="h-4 w-4" />
                           </Link>
                         </Button>
                       </div>

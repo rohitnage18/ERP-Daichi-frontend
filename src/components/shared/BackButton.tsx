@@ -61,7 +61,7 @@ export function BackButton({
   );
 }
 
-/** Shown below the app header on every page except the main dashboard. */
+/** Single back control at the top of every dashboard page except home. */
 export function HeaderBackButton() {
   const pathname = usePathname();
 
@@ -70,8 +70,13 @@ export function HeaderBackButton() {
   }
 
   return (
-    <div className="app-back-bar shrink-0 bg-card px-4 py-2 sm:px-6 print:hidden">
-      <BackButton variant="outline" size="sm" label="Back" />
+    <div className="app-back-bar mb-2 print:hidden sm:mb-3">
+      <BackButton
+        variant="ghost"
+        size="sm"
+        label="Back"
+        className="-ml-2 h-8 bg-transparent px-2 text-foreground shadow-none hover:bg-muted/40"
+      />
     </div>
   );
 }

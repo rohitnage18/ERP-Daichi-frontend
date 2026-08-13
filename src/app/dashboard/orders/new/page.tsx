@@ -29,8 +29,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ArrowLeft, Loader2, Plus, Trash2, Send, Save, Check, ChevronsUpDown, Search } from "lucide-react";
-import Link from "next/link";
+import { Loader2, Plus, Trash2, Send, Save, Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { matchesProductSearch } from "@/lib/product-search";
 import {
@@ -263,17 +262,10 @@ export default function NewOrderPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/orders">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
+      <div>
           <h1 className="text-3xl font-bold">New Order</h1>
           <p className="text-muted-foreground">Create a new order for a dealer</p>
         </div>
-      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">

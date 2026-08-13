@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { apiFetch, apiFetchJsonArray } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface InvoiceOption {
   id: string;
@@ -132,14 +131,7 @@ export default function NewCreditNotePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/dashboard/finance/credit-notes">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold tracking-tight">New credit note</h1>
-      </div>
+      <h1 className="text-2xl font-bold tracking-tight">New credit note</h1>
 
       <Card className="border-border/80 shadow-card">
         <CardHeader>

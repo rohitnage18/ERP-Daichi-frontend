@@ -59,6 +59,18 @@ export function formatDate(date: DateInput, fallback = "—"): string {
   }).format(d);
 }
 
+export function formatDateTime(date: DateInput, fallback = "—"): string {
+  const d = parseValidDate(date);
+  if (!d) return fallback;
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
 /** Daichi invoice date format e.g. 25-Apr-26 */
 export function formatInvoiceDate(date: DateInput, fallback = ""): string {
   const d = parseValidDate(date);

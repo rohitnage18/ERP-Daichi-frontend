@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import {
   ALTERNATE_UNIT_OPTIONS,
   GST_RATE_OPTIONS,
@@ -121,17 +120,10 @@ export default function NewProductPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/products">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
+      <div>
           <h1 className="text-3xl font-bold">Add New Product</h1>
           <p className="text-muted-foreground">Add a new product to the catalog</p>
         </div>
-      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>

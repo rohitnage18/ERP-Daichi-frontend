@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, CheckCircle2, Loader2, MapPin } from "lucide-react";
+import { CheckCircle2, Loader2, MapPin } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { PhotoCaptureField } from "@/components/shared/PhotoCaptureField";
 
@@ -84,7 +83,7 @@ export default function DailyLogPage() {
       });
       if (res.ok) {
         setDone(true);
-        setTimeout(() => router.push("/dashboard/field"), 1500);
+        setTimeout(() => router.push("/dashboard/field/history"), 1200);
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.error || "Could not save. Try again.");
@@ -98,27 +97,20 @@ export default function DailyLogPage() {
 
   if (done) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+      <div className="mx-auto max-w-lg py-16 text-center">
         <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-600" />
         <h2 className="mt-4 text-2xl font-bold">Saved!</h2>
-        <p className="text-muted-foreground">Your daily log was submitted.</p>
+        <p className="text-muted-foreground">Opening your field history…</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-6 px-4 pb-8">
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard/field">
-          <Button variant="ghost" size="icon" aria-label="Back">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
+    <div className="mx-auto max-w-lg space-y-6 pb-8">
+      <div>
           <h1 className="text-xl sm:text-2xl font-bold">Daily work log</h1>
           <p className="text-sm text-muted-foreground">Today — {new Date().toLocaleDateString("en-IN")}</p>
         </div>
-      </div>
 
       <form onSubmit={submit}>
         <Card>

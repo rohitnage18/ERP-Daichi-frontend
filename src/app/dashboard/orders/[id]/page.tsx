@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Truck, FileText, Loader2, Pencil, Save, X } from "lucide-react";
+import { Truck, FileText, Loader2, Pencil, Save, X } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 interface OrderDetail {
@@ -259,9 +259,6 @@ export default function OrderDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">Order not found</p>
-        <Link href="/dashboard/orders">
-          <Button className="mt-4">Back to Orders</Button>
-        </Link>
       </div>
     );
   }
@@ -269,21 +266,14 @@ export default function OrderDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/orders">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">{order.orderNumber}</h1>
-              <StatusBadge status={order.status} />
-            </div>
-            <p className="text-muted-foreground">
-              {order.dealerName || order.dealer?.firmName || ''} • {formatDate(order.orderDate)}
-            </p>
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">{order.orderNumber}</h1>
+            <StatusBadge status={order.status} />
           </div>
+          <p className="text-muted-foreground">
+            {order.dealerName || order.dealer?.firmName || ''} • {formatDate(order.orderDate)}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {canEditOrder &&

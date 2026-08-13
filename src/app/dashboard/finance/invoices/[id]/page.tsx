@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +17,7 @@ import {
 import { apiFetch } from "@/lib/api";
 import { TaxInvoiceDocument } from "@/components/invoices/TaxInvoiceDocument";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Printer, CheckCircle, Mail, Loader2 } from "lucide-react";
+import { Printer, CheckCircle, Mail, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function InvoiceDetailPage() {
@@ -110,9 +109,6 @@ export default function InvoiceDetailPage() {
     return (
       <div className="py-12 text-center">
         <p className="text-muted-foreground">Invoice not found.</p>
-        <Button asChild className="mt-4">
-          <Link href="/dashboard/finance/invoices">Back to invoices</Link>
-        </Button>
       </div>
     );
   }
@@ -120,17 +116,10 @@ export default function InvoiceDetailPage() {
   return (
     <div className="mx-auto max-w-[220mm] space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4 no-print">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard/finance/invoices">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div>
+        <div>
             <h1 className="text-2xl font-bold tracking-tight">{String(invoice.invoiceNumber)}</h1>
             <p className="text-sm text-muted-foreground">Tax Invoice preview</p>
           </div>
-        </div>
         <div className="flex flex-wrap gap-2">
           {invoice.status === "DRAFT" && (
             <Button variant="outline" onClick={handleFinalize}>

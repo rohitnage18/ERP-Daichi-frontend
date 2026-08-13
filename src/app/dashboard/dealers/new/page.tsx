@@ -16,8 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Loader2, Save, Send } from "lucide-react";
-import Link from "next/link";
+import { Loader2, Save, Send } from "lucide-react";
 
 interface Zone {
   id: string;
@@ -118,19 +117,12 @@ export default function NewDealerPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/dealers">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
+      <div>
           <h1 className="text-3xl font-bold">New Dealer Registration</h1>
           <p className="text-muted-foreground">
             Fill in dealer details to create a new registration
           </p>
         </div>
-      </div>
 
       <Tabs defaultValue="basic" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { PhotoCaptureField } from "@/components/shared/PhotoCaptureField";
 
 interface DealerOption {
@@ -110,15 +109,8 @@ export default function NewVisitPage() {
   };
 
   return (
-    <div className="mx-auto max-w-lg space-y-6 px-4 pb-8">
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard/field">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <h1 className="text-xl sm:text-2xl font-bold">Record dealer visit</h1>
-      </div>
+    <div className="mx-auto max-w-lg space-y-6 pb-8">
+      <h1 className="text-xl sm:text-2xl font-bold">Record dealer visit</h1>
 
       <form onSubmit={submit}>
         <Card>

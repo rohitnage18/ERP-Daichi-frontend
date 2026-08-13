@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { MapPin, NotebookPen, Wallet, ClipboardCheck } from "lucide-react";
+import { MapPin, NotebookPen, Wallet, ClipboardCheck, Users } from "lucide-react";
 
 const actions = [
   {
@@ -37,24 +36,21 @@ const actions = [
   },
 ];
 
+const teamAction = {
+  title: "Team field activity",
+  description: "Daily logs, visits, GPS, allowances for the sales team",
+  href: "/dashboard/field/team",
+  icon: Users,
+  color: "bg-emerald-50 text-emerald-700 border-emerald-100",
+};
+
 export default function FieldHubPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "MANAGEMENT_ADMIN";
-
-  const items = isAdmin
-    ? [
-        {
-          title: "Team field activity",
-          description: "Daily logs, visits, GPS, allowances for the sales team",
-          href: "/dashboard/field/team",
-          icon: ClipboardCheck,
-          color: "bg-emerald-50 text-emerald-700 border-emerald-100",
-        },
-      ]
-    : actions;
+  const items = isAdmin ? [teamAction, ...actions] : actions;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 pb-8 sm:px-0">
+    <div className="mx-auto max-w-3xl space-y-6 pb-8">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Field work</h1>
         <p className="mt-1 text-base sm:text-lg text-muted-foreground">
@@ -74,9 +70,9 @@ export default function FieldHubPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button size="lg" className="w-full h-12 sm:h-14 text-base" variant="secondary">
+                <span className="inline-flex h-12 w-full items-center justify-center rounded-md bg-secondary px-8 text-base font-medium text-secondary-foreground sm:h-14">
                   Open
-                </Button>
+                </span>
               </CardContent>
             </Card>
           </Link>

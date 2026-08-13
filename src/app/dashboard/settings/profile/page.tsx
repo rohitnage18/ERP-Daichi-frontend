@@ -1,10 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
 
 const roleLabels: Record<string, string> = {
   SALES_MARKETING: "Sales & Marketing",
@@ -26,14 +23,7 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/dashboard/settings">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
-      </div>
+      <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
 
       <Card className="border-border/80 shadow-card">
         <CardHeader>
