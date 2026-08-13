@@ -131,11 +131,10 @@ export default function ProductsPage() {
     "Bio pesticides",
     "Organic fertilizers",
     "Bio Stimulants",
-    "Insecticides",
-    "Weedicides / herbicides",
-    "Fungicides",
-    "Plant Growth Promoter / Retardant (PGR)",
-    "Pesticides",
+    "A - Insecticides",
+    "B - Weedicides / herbicides",
+    "C - Fungicides",
+    "D - Plant Growth Promoter / Retardant (PGR)",
     "Uncategorized",
   ];
 
