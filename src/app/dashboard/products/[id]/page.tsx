@@ -28,6 +28,7 @@ import {
   UNIT_OF_MEASURE_OPTIONS,
   conversionLabel,
 } from "@/lib/packaging";
+import { ProductCategorySelect } from "@/components/products/ProductCategorySelect";
 
 interface CategoryOption {
   id: string;
@@ -281,23 +282,14 @@ export default function ProductDetailPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>Category</Label>
-            <Select
+          <div className="md:col-span-2">
+            <ProductCategorySelect
+              categories={categories}
               value={form.categoryId}
-              onValueChange={(v) => setForm({ ...form, categoryId: v })}
+              onChange={(v) => setForm({ ...form, categoryId: v })}
               disabled={!canEdit}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              required
+            />
           </div>
           <div className="space-y-2">
             <Label>HSN / SAC Code</Label>
