@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, User, Lock, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/branding/Logo";
 import { wakeApi } from "@/lib/keepalive";
-import { apiUrl } from "@/lib/api";
 
 function formatSignInError(error: string): string {
   const decoded = decodeURIComponent(error);
@@ -40,27 +39,37 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [companyStats, setCompanyStats] = useState<{
-    districtsCovered: number;
     activeDealers: number;
     products: number;
   } | null>(null);
 
-  // Wake Render free-tier while user types credentials
   useEffect(() => {
     wakeApi();
-    fetch(apiUrl("/api/public/stats"))
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (
-          data &&
-          typeof data.districtsCovered === "number" &&
-          typeof data.activeDealers === "number" &&
-          typeof data.products === "number"
-        ) {
-          setCompanyStats(data);
+    let cancelled = false;
+
+    const load = async () => {
+      for (let attempt = 0; attempt < 5 && !cancelled; attempt++) {
+        try {
+          const res = await fetch("/api/public/stats", { cache: "no-store" });
+          if (!res.ok) throw new Error(String(res.status));
+          const data = await res.json();
+          const activeDealers = Number(data?.activeDealers);
+          const products = Number(data?.products);
+          if (Number.isFinite(activeDealers) && Number.isFinite(products)) {
+            if (!cancelled) setCompanyStats({ activeDealers, products });
+            return;
+          }
+        } catch {
+          // retry while backend wakes
         }
-      })
-      .catch(() => {});
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -144,21 +153,14 @@ export default function LoginPage() {
             <div className="flex items-center gap-8 pt-4">
               <div>
                 <p className="text-3xl font-bold text-white">
-                  {companyStats ? companyStats.districtsCovered.toLocaleString("en-IN") : "—"}
-                </p>
-                <p className="text-sm text-white/80">Districts Covered</p>
-              </div>
-              <div className="h-12 w-px bg-white/25" />
-              <div>
-                <p className="text-3xl font-bold text-white">
-                  {companyStats ? companyStats.activeDealers.toLocaleString("en-IN") : "—"}
+                  {companyStats ? companyStats.activeDealers.toLocaleString("en-IN") : "…"}
                 </p>
                 <p className="text-sm text-white/80">Active Dealers</p>
               </div>
               <div className="h-12 w-px bg-white/25" />
               <div>
                 <p className="text-3xl font-bold text-white">
-                  {companyStats ? companyStats.products.toLocaleString("en-IN") : "—"}
+                  {companyStats ? companyStats.products.toLocaleString("en-IN") : "…"}
                 </p>
                 <p className="text-sm text-white/80">Products</p>
               </div>
