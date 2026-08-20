@@ -357,8 +357,9 @@ export default function BillingPage() {
     });
 
     const totalTax = totalCgst + totalSgst + totalIgst;
+    // Freight is recorded for display only — not included in grand total.
     const freight = Math.max(0, freightCharges || 0);
-    const rawTotal = subtotal + totalTax - freight;
+    const rawTotal = subtotal + totalTax;
     const roundedTotal = Math.round(rawTotal);
     const roundOff = Math.round((roundedTotal - rawTotal) * 100) / 100;
 
@@ -730,7 +731,8 @@ export default function BillingPage() {
             <CardHeader>
               <CardTitle>Invoice Items</CardTitle>
               <CardDescription>
-                Change Qty only. Units per case update automatically and cannot be edited.
+                Enter Qty in Cases. Units per Case comes from the product packing; Quantity (Nos) =
+                Cases × Units per Case. Amount = Nos × Rate/Unit.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -828,9 +830,10 @@ export default function BillingPage() {
                         <TableHead>Product</TableHead>
                         <TableHead>HSN</TableHead>
                         <TableHead>Packing</TableHead>
-                        <TableHead className="w-20">Qty</TableHead>
-                        <TableHead className="w-40">Units per Case</TableHead>
-                        <TableHead className="w-28">Rate/Unit</TableHead>
+                        <TableHead className="w-20">Qty (Cases)</TableHead>
+                        <TableHead className="w-28">Units / Case</TableHead>
+                        <TableHead className="w-24">Qty (Nos)</TableHead>
+                        <TableHead className="w-28">Rate / Nos</TableHead>
                         <TableHead className="w-24">Discount</TableHead>
                         <TableHead className="w-20">GST %</TableHead>
                         <TableHead className="text-right">Taxable</TableHead>
@@ -872,7 +875,12 @@ export default function BillingPage() {
                               />
                             </TableCell>
                             <TableCell>
-                              <div className="flex h-10 w-24 items-center rounded-md border bg-muted px-3 text-sm tabular-nums">
+                              <div className="flex h-10 w-20 items-center rounded-md border bg-muted px-3 text-sm tabular-nums">
+                                {upc}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex h-10 w-20 items-center rounded-md border bg-muted px-3 text-sm tabular-nums">
                                 {totalUnits}
                               </div>
                             </TableCell>
@@ -997,18 +1005,6 @@ export default function BillingPage() {
                   <span className="text-muted-foreground">IGST</span>
                   <span className="tabular-nums">{formatCurrency(totals.igst)}</span>
                 </div>
-                <div className="flex justify-between text-sm items-center gap-2">
-                  <span className="text-muted-foreground">Freight (Less)</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={freightCharges || ""}
-                    onChange={(e) => setFreightCharges(Math.max(0, parseFloat(e.target.value) || 0))}
-                    placeholder="0"
-                    className="h-8 w-28 text-right tabular-nums"
-                  />
-                </div>
                 {totals.roundOff !== 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Round Off</span>
@@ -1028,6 +1024,23 @@ export default function BillingPage() {
                       {formatCurrency(totals.grandTotal)}
                     </span>
                   </div>
+                </div>
+                <div className="border-t pt-3 space-y-1">
+                  <div className="flex justify-between text-sm items-center gap-2">
+                    <span className="text-muted-foreground">Freight Charges</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={freightCharges || ""}
+                      onChange={(e) => setFreightCharges(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="0"
+                      className="h-8 w-28 text-right tabular-nums"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Shown on invoice only — not included in grand total
+                  </p>
                 </div>
               </div>
 

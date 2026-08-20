@@ -414,9 +414,10 @@ export default function NewOrderPage() {
                     <TableRow>
                       <TableHead>Product</TableHead>
                       <TableHead>Packing</TableHead>
-                      <TableHead className="w-[110px]">Qty</TableHead>
-                      <TableHead className="w-[140px]">Units per Case</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
+                      <TableHead className="w-[110px]">Qty (Cases)</TableHead>
+                      <TableHead className="w-[100px]">Units / Case</TableHead>
+                      <TableHead className="w-[100px]">Qty (Nos)</TableHead>
+                      <TableHead className="text-right">Rate / Nos</TableHead>
                       <TableHead className="text-right">Tax</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
@@ -448,7 +449,12 @@ export default function NewOrderPage() {
                           />
                         </TableCell>
                         <TableCell>
-                          <div className="flex h-10 w-24 items-center rounded-md border bg-muted px-3 text-sm tabular-nums">
+                          <div className="flex h-10 w-20 items-center rounded-md border bg-muted px-3 text-sm tabular-nums">
+                            {upc}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex h-10 w-20 items-center rounded-md border bg-muted px-3 text-sm tabular-nums">
                             {totalUnits}
                           </div>
                         </TableCell>
