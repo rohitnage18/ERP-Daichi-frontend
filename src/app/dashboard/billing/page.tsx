@@ -1025,7 +1025,7 @@ export default function BillingPage() {
                     </span>
                   </div>
                 </div>
-                <div className="border-t pt-3 space-y-1">
+                <div className="border-t pt-3">
                   <div className="flex justify-between text-sm items-center gap-2">
                     <span className="text-muted-foreground">Freight Charges</span>
                     <Input
@@ -1038,9 +1038,6 @@ export default function BillingPage() {
                       className="h-8 w-28 text-right tabular-nums"
                     />
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Shown on invoice only — not included in grand total
-                  </p>
                 </div>
               </div>
 

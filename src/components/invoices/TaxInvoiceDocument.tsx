@@ -479,7 +479,7 @@ function ItemsTable({
             {invoice.freightCharges ? (
               <tr>
                 <td className={cellClass} colSpan={7}>
-                  Freight Charges (not included in total)
+                  Freight Charges
                 </td>
                 <td className={`${cellClass} text-right tabular-nums`}>
                   {formatInvoiceAmount(Math.abs(Number(invoice.freightCharges)))}
