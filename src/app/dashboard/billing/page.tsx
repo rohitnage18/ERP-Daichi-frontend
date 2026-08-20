@@ -1005,6 +1005,18 @@ export default function BillingPage() {
                   <span className="text-muted-foreground">IGST</span>
                   <span className="tabular-nums">{formatCurrency(totals.igst)}</span>
                 </div>
+                <div className="flex justify-between text-sm items-center gap-2">
+                  <span className="text-muted-foreground">Freight Charges</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={freightCharges || ""}
+                    onChange={(e) => setFreightCharges(Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder="0"
+                    className="h-8 w-28 text-right tabular-nums"
+                  />
+                </div>
                 {totals.roundOff !== 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Round Off</span>
@@ -1023,20 +1035,6 @@ export default function BillingPage() {
                     <span className="tabular-nums text-brand-700">
                       {formatCurrency(totals.grandTotal)}
                     </span>
-                  </div>
-                </div>
-                <div className="border-t pt-3">
-                  <div className="flex justify-between text-sm items-center gap-2">
-                    <span className="text-muted-foreground">Freight Charges</span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={freightCharges || ""}
-                      onChange={(e) => setFreightCharges(Math.max(0, parseFloat(e.target.value) || 0))}
-                      placeholder="0"
-                      className="h-8 w-28 text-right tabular-nums"
-                    />
                   </div>
                 </div>
               </div>

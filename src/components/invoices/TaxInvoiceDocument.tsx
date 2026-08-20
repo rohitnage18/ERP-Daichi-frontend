@@ -449,6 +449,17 @@ function ItemsTable({
               </React.Fragment>
             ))}
 
+            {invoice.freightCharges ? (
+              <tr>
+                <td className={cellClass} colSpan={7}>
+                  Freight Charges
+                </td>
+                <td className={`${cellClass} text-right tabular-nums`}>
+                  {formatInvoiceAmount(Math.abs(Number(invoice.freightCharges)))}
+                </td>
+              </tr>
+            ) : null}
+
             {invoice.roundOff != null && Number(invoice.roundOff) !== 0 ? (
               <tr>
                 <td className={cellClass} colSpan={7}>
@@ -475,17 +486,6 @@ function ItemsTable({
                 ₹ {formatInvoiceAmount(invoice.totalAmount)}
               </td>
             </tr>
-
-            {invoice.freightCharges ? (
-              <tr>
-                <td className={cellClass} colSpan={7}>
-                  Freight Charges
-                </td>
-                <td className={`${cellClass} text-right tabular-nums`}>
-                  {formatInvoiceAmount(Math.abs(Number(invoice.freightCharges)))}
-                </td>
-              </tr>
-            ) : null}
           </>
         )}
       </tbody>
