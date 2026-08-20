@@ -8,6 +8,7 @@ import {
   ITEMS_PER_INVOICE_PAGE,
   resolveUnitsPerCase,
   numberToWords,
+  payableInvoiceTotals,
 } from "@/lib/invoice-utils";
 
 interface TaxInvoiceDocumentProps {
@@ -351,12 +352,14 @@ function ItemsTable({
   invoice,
   taxRateGroups,
   allItems,
+  payable,
 }: {
   pageItems: NormalizedItem[];
   showTotals: boolean;
   invoice: Record<string, any>;
   taxRateGroups: ReturnType<typeof buildTaxRateGroups>;
   allItems: NormalizedItem[];
+  payable: ReturnType<typeof payableInvoiceTotals>;
 }) {
   const totalQty = allItems.reduce((sum, item) => sum + item.quantity, 0);
   const totalCases = allItems.reduce((sum, item) => {
@@ -460,13 +463,13 @@ function ItemsTable({
               </tr>
             ) : null}
 
-            {invoice.roundOff != null && Number(invoice.roundOff) !== 0 ? (
+            {payable.roundOff !== 0 ? (
               <tr>
                 <td className={cellClass} colSpan={7}>
                   Round Off
                 </td>
                 <td className={`${cellClass} text-right tabular-nums`}>
-                  {Number(invoice.roundOff).toFixed(2)}
+                  {payable.roundOff.toFixed(2)}
                 </td>
               </tr>
             ) : null}
@@ -483,7 +486,7 @@ function ItemsTable({
               </td>
               <td className={cellClass} colSpan={2} />
               <td className={`${cellClass} text-right tabular-nums`}>
-                ₹ {formatInvoiceAmount(invoice.totalAmount)}
+                ₹ {formatInvoiceAmount(payable.totalAmount)}
               </td>
             </tr>
           </>
@@ -496,9 +499,11 @@ function ItemsTable({
 function InvoiceFooterSection({
   invoice,
   hsnRows,
+  payable,
 }: {
   invoice: Record<string, any>;
   hsnRows: HsnTaxRow[];
+  payable: ReturnType<typeof payableInvoiceTotals>;
 }) {
   const supplierName = invoice.supplierName || DAICHI_SUPPLIER.name;
   const totalTax =
@@ -516,7 +521,7 @@ function InvoiceFooterSection({
         <div className="shrink-0 font-medium">E. &amp; O.E</div>
       </div>
       <div className="border-b border-black px-2 pb-2 text-[10px] font-medium">
-        INR {invoice.totalAmountInWords || numberToWords(invoice.totalAmount)}
+        INR {numberToWords(payable.totalAmount)}
       </div>
 
       {/* HSN/SAC summary — Tally footer */}
@@ -634,6 +639,13 @@ export function TaxInvoiceDocument({ invoice }: TaxInvoiceDocumentProps) {
   const taxRateGroups = buildTaxRateGroups(allItems);
   const hsnRows = buildHsnTaxRows(allItems);
   const pages = paginateItems(allItems);
+  const payable = payableInvoiceTotals({
+    subtotal: invoice.subtotal,
+    totalTax: invoice.totalTax,
+    cgstAmount: invoice.cgstAmount,
+    sgstAmount: invoice.sgstAmount,
+    igstAmount: invoice.igstAmount,
+  });
 
   return (
     <div className="tax-invoice-document mx-auto max-w-[210mm] bg-white font-serif text-black leading-snug">
@@ -650,9 +662,12 @@ export function TaxInvoiceDocument({ invoice }: TaxInvoiceDocumentProps) {
             invoice={invoice}
             taxRateGroups={taxRateGroups}
             allItems={allItems}
+            payable={payable}
           />
 
-          {page.showTotals && <InvoiceFooterSection invoice={invoice} hsnRows={hsnRows} />}
+          {page.showTotals && (
+            <InvoiceFooterSection invoice={invoice} hsnRows={hsnRows} payable={payable} />
+          )}
 
           <div className="border-t border-black p-1.5 text-center text-[9px]">
             {page.showContinued && <p className="mb-1">continued...</p>}

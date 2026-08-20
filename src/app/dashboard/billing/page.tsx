@@ -45,6 +45,7 @@ import {
   buildLotSize,
   parseUnitsPerCase,
   invoiceUnitOfMeasure,
+  payableInvoiceTotals,
   DAICHI_SUPPLIER,
 } from "@/lib/invoice-utils";
 import { matchesProductSearch } from "@/lib/product-search";
@@ -357,11 +358,14 @@ export default function BillingPage() {
     });
 
     const totalTax = totalCgst + totalSgst + totalIgst;
-    // Freight is recorded for display only — not included in grand total.
     const freight = Math.max(0, freightCharges || 0);
-    const rawTotal = subtotal + totalTax;
-    const roundedTotal = Math.round(rawTotal);
-    const roundOff = Math.round((roundedTotal - rawTotal) * 100) / 100;
+    const { roundOff, totalAmount } = payableInvoiceTotals({
+      subtotal,
+      totalTax,
+      cgstAmount: totalCgst,
+      sgstAmount: totalSgst,
+      igstAmount: totalIgst,
+    });
 
     return {
       subtotal,
@@ -371,7 +375,7 @@ export default function BillingPage() {
       totalTax,
       freightCharges: freight,
       roundOff,
-      grandTotal: roundedTotal,
+      grandTotal: totalAmount,
     };
   };
 

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { billedUnitsFromCases, casesFromBilledUnits } from "./invoice-utils";
+import { billedUnitsFromCases, casesFromBilledUnits, payableInvoiceTotals } from "./invoice-utils";
 import { deriveLotSizeLabel } from "./packing-math";
 import { matchesProductSearch } from "./product-search";
 
@@ -23,6 +23,20 @@ describe("billing qty scales with units per case", () => {
 
   it("5kg generic × 5: qty 2 → 10 units", () => {
     assert.equal(billedUnitsFromCases(2, 5), 10);
+  });
+});
+
+describe("freight is not part of payable total", () => {
+  it("rounds goods + tax only (freight 100 does not change total)", () => {
+    const payable = payableInvoiceTotals({
+      subtotal: 1995,
+      cgstAmount: 49.88,
+      sgstAmount: 49.88,
+      igstAmount: 0,
+      totalTax: 99.76,
+    });
+    assert.equal(payable.totalAmount, 2095);
+    assert.equal(payable.roundOff, 0.24);
   });
 });
 
