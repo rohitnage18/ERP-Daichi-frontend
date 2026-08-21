@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, User, Lock, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/branding/Logo";
-import { getApiBaseUrl } from "@/lib/api";
 
 function formatSignInError(error: string): string {
   const decoded = decodeURIComponent(error);
@@ -49,7 +48,7 @@ export default function LoginPage() {
 
     const load = async () => {
       try {
-        const res = await fetch(`${getApiBaseUrl().replace(/\/$/, "")}/health`, {
+        const res = await fetch("/api/company-stats", {
           cache: "no-store",
           headers: { Accept: "application/json" },
           signal: controller.signal,
