@@ -57,7 +57,13 @@ export default function LoginPage() {
     };
 
     const load = async () => {
-      const urls = ["/api/public/stats", `${getApiBaseUrl().replace(/\/$/, "")}/api/public/stats`];
+      const base = getApiBaseUrl().replace(/\/$/, "");
+      const urls = [
+        `${base}/stats`,
+        `${base}/health`,
+        "/api/public/stats",
+        `${base}/api/public/stats`,
+      ];
       for (let attempt = 0; attempt < 6 && !cancelled; attempt++) {
         for (const url of urls) {
           try {
