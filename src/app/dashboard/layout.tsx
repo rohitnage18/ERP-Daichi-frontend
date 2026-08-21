@@ -9,6 +9,7 @@ import { HeaderBackButton } from "@/components/shared/BackButton";
 import { NavProvider } from "@/components/layout/NavContext";
 import { Loader2 } from "lucide-react";
 import { isPathBlockedForRole } from "@/lib/permissions";
+import { startApiKeepAlive } from "@/lib/keepalive";
 
 export default function DashboardLayout({
   children,
@@ -24,6 +25,11 @@ export default function DashboardLayout({
       router.push("/login");
     }
   }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    return startApiKeepAlive();
+  }, [status]);
 
   useEffect(() => {
     const role = session?.user?.role as string | undefined;

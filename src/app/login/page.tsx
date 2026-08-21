@@ -45,12 +45,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
     const load = async () => {
       try {
         const res = await fetch(`${getApiBaseUrl().replace(/\/$/, "")}/health`, {
           cache: "no-store",
           headers: { Accept: "application/json" },
+          signal: controller.signal,
         });
         if (!res.ok) return;
         const data = await res.json();
@@ -71,6 +73,7 @@ export default function LoginPage() {
     void load();
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, []);
 
