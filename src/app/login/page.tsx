@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, User, Lock, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/branding/Logo";
 import { wakeApi } from "@/lib/keepalive";
+import { getApiBaseUrl } from "@/lib/api";
 
 function formatSignInError(error: string): string {
   const decoded = decodeURIComponent(error);
@@ -47,28 +48,48 @@ export default function LoginPage() {
     wakeApi();
     let cancelled = false;
 
+    const parseStats = (data: unknown) => {
+      const body = data as { activeDealers?: number; products?: number };
+      const activeDealers = Number(body?.activeDealers);
+      const products = Number(body?.products);
+      if (!Number.isFinite(activeDealers) || !Number.isFinite(products)) return null;
+      return { activeDealers, products };
+    };
+
     const load = async () => {
-      for (let attempt = 0; attempt < 5 && !cancelled; attempt++) {
-        try {
-          const res = await fetch("/api/public/stats", { cache: "no-store" });
-          if (!res.ok) throw new Error(String(res.status));
-          const data = await res.json();
-          const activeDealers = Number(data?.activeDealers);
-          const products = Number(data?.products);
-          if (Number.isFinite(activeDealers) && Number.isFinite(products)) {
-            if (!cancelled) setCompanyStats({ activeDealers, products });
-            return;
+      const urls = [`${getApiBaseUrl().replace(/\/$/, "")}/api/public/stats`, "/api/public/stats"];
+      for (let attempt = 0; attempt < 6 && !cancelled; attempt++) {
+        for (const url of urls) {
+          try {
+            const res = await fetch(url, {
+              cache: "no-store",
+              headers: { Accept: "application/json" },
+            });
+            if (!res.ok) continue;
+            const stats = parseStats(await res.json());
+            if (stats && !cancelled) {
+              setCompanyStats(stats);
+              return;
+            }
+          } catch {
+            // try the other URL / retry while backend wakes
           }
-        } catch {
-          // retry while backend wakes
         }
-        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+        await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
       }
     };
 
     void load();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 20_000);
+    const onFocus = () => void load();
+    window.addEventListener("focus", onFocus);
+
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
     };
   }, []);
 
