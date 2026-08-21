@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, User, Lock, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/branding/Logo";
-import { wakeApi } from "@/lib/keepalive";
 import { getApiBaseUrl } from "@/lib/api";
 
 function formatSignInError(error: string): string {
@@ -45,57 +44,33 @@ export default function LoginPage() {
   } | null>(null);
 
   useEffect(() => {
-    wakeApi();
     let cancelled = false;
 
-    const parseStats = (data: unknown) => {
-      const body = data as { activeDealers?: number; products?: number };
-      const activeDealers = Number(body?.activeDealers);
-      const products = Number(body?.products);
-      if (!Number.isFinite(activeDealers) || !Number.isFinite(products)) return null;
-      return { activeDealers, products };
-    };
-
     const load = async () => {
-      const base = getApiBaseUrl().replace(/\/$/, "");
-      const urls = [
-        `${base}/stats`,
-        `${base}/health`,
-        "/api/public/stats",
-        `${base}/api/public/stats`,
-      ];
-      for (let attempt = 0; attempt < 6 && !cancelled; attempt++) {
-        for (const url of urls) {
-          try {
-            const res = await fetch(url, {
-              cache: "no-store",
-              headers: { Accept: "application/json" },
-            });
-            if (!res.ok) continue;
-            const stats = parseStats(await res.json());
-            if (stats && !cancelled) {
-              setCompanyStats(stats);
-              return;
-            }
-          } catch {
-            // try the other URL / retry while backend wakes
-          }
+      try {
+        const res = await fetch(`${getApiBaseUrl().replace(/\/$/, "")}/stats`, {
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const activeDealers = Number(data?.activeDealers);
+        const products = Number(data?.products);
+        if (
+          !cancelled &&
+          Number.isFinite(activeDealers) &&
+          Number.isFinite(products)
+        ) {
+          setCompanyStats({ activeDealers, products });
         }
-        await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
+      } catch {
+        // leave placeholders if the API is down
       }
     };
 
     void load();
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load();
-    }, 20_000);
-    const onFocus = () => void load();
-    window.addEventListener("focus", onFocus);
-
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
     };
   }, []);
 
