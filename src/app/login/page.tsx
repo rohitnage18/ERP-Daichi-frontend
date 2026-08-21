@@ -157,7 +157,7 @@ export default function LoginPage() {
                 <p className="text-3xl font-bold text-white">
                   {companyStats ? companyStats.activeDealers.toLocaleString("en-IN") : "…"}
                 </p>
-                <p className="text-sm text-white/80">Active Dealers</p>
+                <p className="text-sm text-white/80">Total Dealers</p>
               </div>
               <div className="h-12 w-px bg-white/25" />
               <div>
