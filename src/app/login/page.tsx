@@ -48,20 +48,20 @@ export default function LoginPage() {
 
     const load = async () => {
       try {
-        const res = await fetch(`${getApiBaseUrl().replace(/\/$/, "")}/stats`, {
+        const res = await fetch(`${getApiBaseUrl().replace(/\/$/, "")}/health`, {
           cache: "no-store",
           headers: { Accept: "application/json" },
         });
         if (!res.ok) return;
         const data = await res.json();
-        const activeDealers = Number(data?.activeDealers);
+        const totalDealers = Number(data?.totalDealers ?? data?.activeDealers);
         const products = Number(data?.products);
         if (
           !cancelled &&
-          Number.isFinite(activeDealers) &&
+          Number.isFinite(totalDealers) &&
           Number.isFinite(products)
         ) {
-          setCompanyStats({ activeDealers, products });
+          setCompanyStats({ activeDealers: totalDealers, products });
         }
       } catch {
         // leave placeholders if the API is down

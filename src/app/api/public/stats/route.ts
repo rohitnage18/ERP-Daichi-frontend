@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const res = await fetch(`${getApiBaseUrl().replace(/\/$/, "")}/stats`, {
+    const res = await fetch(`${getApiBaseUrl().replace(/\/$/, "")}/health`, {
       cache: "no-store",
       headers: { Accept: "application/json" },
     });
@@ -13,13 +13,13 @@ export async function GET() {
       return NextResponse.json({ error: "Stats unavailable" }, { status: 503 });
     }
     const data = await res.json();
-    const activeDealers = Number(data?.activeDealers);
+    const totalDealers = Number(data?.totalDealers ?? data?.activeDealers);
     const products = Number(data?.products);
-    if (!Number.isFinite(activeDealers) || !Number.isFinite(products)) {
+    if (!Number.isFinite(totalDealers) || !Number.isFinite(products)) {
       return NextResponse.json({ error: "Stats unavailable" }, { status: 503 });
     }
     return NextResponse.json(
-      { activeDealers, products },
+      { activeDealers: totalDealers, totalDealers, products },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch {
