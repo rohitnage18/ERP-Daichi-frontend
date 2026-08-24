@@ -24,11 +24,79 @@ interface InventoryItem {
   product: {
     productCode: string;
     name: string;
+    packingSize?: string;
+    packingType?: string;
+    packingUnit?: string;
     unitOfMeasure: string;
     subCategory: {
       name: string;
     };
   };
+}
+
+function isLiquidProduct(item: InventoryItem): boolean {
+  if (item.product.packingType === "LIQUID") return true;
+  if (item.product.packingType === "POWDER_GRANULES") return false;
+  const blob = [
+    item.product.packingSize,
+    item.product.packingUnit,
+    item.product.unitOfMeasure,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return /\b(ml|ltr|lit|litre|liter)\b/.test(blob);
+}
+
+function StockTable({ items }: { items: InventoryItem[] }) {
+  if (items.length === 0) {
+    return <p className="py-6 text-center text-sm text-muted-foreground">No products in this group</p>;
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Product Code</TableHead>
+          <TableHead>Product Name</TableHead>
+          <TableHead>Packing</TableHead>
+          <TableHead>Category</TableHead>
+          <TableHead>Warehouse</TableHead>
+          <TableHead className="text-right">Quantity</TableHead>
+          <TableHead className="text-right">Reorder Level</TableHead>
+          <TableHead>Status</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {items.map((item) => {
+          const isLowStock = item.quantity <= item.reorderLevel;
+          return (
+            <TableRow key={item.id}>
+              <TableCell className="font-medium">{item.product.productCode}</TableCell>
+              <TableCell>{item.product.name}</TableCell>
+              <TableCell className="text-sm">{item.product.packingSize || "—"}</TableCell>
+              <TableCell>{item.product.subCategory.name}</TableCell>
+              <TableCell>{item.warehouseCode}</TableCell>
+              <TableCell className="text-right">
+                {item.quantity.toLocaleString()} {item.product.unitOfMeasure}
+              </TableCell>
+              <TableCell className="text-right">{item.reorderLevel.toLocaleString()}</TableCell>
+              <TableCell>
+                {isLowStock ? (
+                  <Badge variant="destructive" className="flex w-fit items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Low Stock
+                  </Badge>
+                ) : (
+                  <Badge variant="success">In Stock</Badge>
+                )}
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
 }
 
 export default function InventoryPage() {
@@ -59,17 +127,15 @@ export default function InventoryPage() {
       item.product.productCode.toLowerCase().includes(search.toLowerCase())
   );
 
+  const kgStock = filteredInventory.filter((item) => !isLiquidProduct(item));
+  const ltrStock = filteredInventory.filter((item) => isLiquidProduct(item));
   const lowStockCount = inventory.filter((item) => item.quantity <= item.reorderLevel).length;
-  const totalProducts = inventory.length;
-  const totalQuantity = inventory.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Inventory</h1>
-        <p className="text-muted-foreground">
-          Monitor stock levels and manage inventory
-        </p>
+        <p className="text-muted-foreground">Monitor stock levels by packing — Kg and Litre separately</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -80,8 +146,8 @@ export default function InventoryPage() {
                 <Warehouse className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{totalProducts}</p>
-                <p className="text-sm text-muted-foreground">Total Products</p>
+                <p className="text-2xl font-bold">{kgStock.length}</p>
+                <p className="text-sm text-muted-foreground">Kg products</p>
               </div>
             </div>
           </CardContent>
@@ -93,8 +159,8 @@ export default function InventoryPage() {
                 <Warehouse className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{totalQuantity.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Total Units</p>
+                <p className="text-2xl font-bold">{ltrStock.length}</p>
+                <p className="text-sm text-muted-foreground">Ltr products</p>
               </div>
             </div>
           </CardContent>
@@ -114,79 +180,43 @@ export default function InventoryPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Stock Levels</CardTitle>
-          <CardDescription>
-            Current inventory across all warehouses
-          </CardDescription>
-          <div className="relative max-w-sm mt-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search products..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : filteredInventory.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No inventory items found
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product Code</TableHead>
-                  <TableHead>Product Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Warehouse</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead className="text-right">Reorder Level</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInventory.map((item) => {
-                  const isLowStock = item.quantity <= item.reorderLevel;
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        {item.product.productCode}
-                      </TableCell>
-                      <TableCell>{item.product.name}</TableCell>
-                      <TableCell>{item.product.subCategory.name}</TableCell>
-                      <TableCell>{item.warehouseCode}</TableCell>
-                      <TableCell className="text-right">
-                        {item.quantity.toLocaleString()} {item.product.unitOfMeasure}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.reorderLevel.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        {isLowStock ? (
-                          <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                            <AlertTriangle className="h-3 w-3" />
-                            Low Stock
-                          </Badge>
-                        ) : (
-                          <Badge variant="success">In Stock</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search products..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+        </div>
+      ) : (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Kg stock</CardTitle>
+              <CardDescription>Powder and granule products (Kg / Gm packing)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StockTable items={kgStock} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Ltr stock</CardTitle>
+              <CardDescription>Liquid products (Litre / ml packing)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StockTable items={ltrStock} />
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

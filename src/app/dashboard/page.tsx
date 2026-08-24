@@ -566,6 +566,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
+        {role !== "PRODUCTION_LOGISTICS" && (
         <Card className="border-border/80 shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -584,18 +585,6 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-medium text-red-900">Overdue payments</p>
                     <p className="text-sm text-red-700">Review invoices and follow up with dealers</p>
-                  </div>
-                </Link>
-              )}
-              {role === "PRODUCTION_LOGISTICS" && (
-                <Link
-                  href="/dashboard/inventory"
-                  className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50/80 p-3 transition-colors hover:bg-amber-100"
-                >
-                  <Package className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-                  <div>
-                    <p className="font-medium text-amber-900">Low stock</p>
-                    <p className="text-sm text-amber-800">Check inventory levels and reorder</p>
                   </div>
                 </Link>
               )}
@@ -679,6 +668,7 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+        )}
       </div>
     </div>
   );
