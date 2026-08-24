@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -37,44 +37,6 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [companyStats, setCompanyStats] = useState<{
-    activeDealers: number;
-    products: number;
-  } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const controller = new AbortController();
-
-    const load = async () => {
-      try {
-        const res = await fetch("/api/company-stats", {
-          cache: "no-store",
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        const totalDealers = Number(data?.totalDealers ?? data?.activeDealers);
-        const products = Number(data?.products);
-        if (
-          !cancelled &&
-          Number.isFinite(totalDealers) &&
-          Number.isFinite(products)
-        ) {
-          setCompanyStats({ activeDealers: totalDealers, products });
-        }
-      } catch {
-        // leave placeholders if the API is down
-      }
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,21 +116,6 @@ export default function LoginPage() {
               Streamline your dealer network, manage orders, track logistics,
               and grow your agricultural business with our comprehensive ERP solution.
             </p>
-            <div className="flex items-center gap-8 pt-4">
-              <div>
-                <p className="text-3xl font-bold text-white">
-                  {companyStats ? companyStats.activeDealers.toLocaleString("en-IN") : "…"}
-                </p>
-                <p className="text-sm text-white/80">Total Dealers</p>
-              </div>
-              <div className="h-12 w-px bg-white/25" />
-              <div>
-                <p className="text-3xl font-bold text-white">
-                  {companyStats ? companyStats.products.toLocaleString("en-IN") : "…"}
-                </p>
-                <p className="text-sm text-white/80">Products</p>
-              </div>
-            </div>
           </div>
 
           <div className="text-sm text-white/70">
