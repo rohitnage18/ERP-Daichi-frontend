@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { canManageInvoice, canViewInvoice } from "@/lib/permissions";
 import { apiFetch } from "@/lib/api";
 import { TaxInvoiceDocument } from "@/components/invoices/TaxInvoiceDocument";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,11 @@ import { ArrowLeft, Printer, Mail, Loader2 } from "lucide-react";
 export default function PrintInvoicePage() {
   const params = useParams();
   const router = useRouter();
+  const { data: session } = useSession();
+  const canEmail = canManageInvoice(session?.user?.role);
+  const invoicesHref = canViewInvoice(session?.user?.role)
+    ? "/dashboard/finance/invoices"
+    : "/dashboard";
   const [invoice, setInvoice] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [emailOpen, setEmailOpen] = useState(false);
@@ -94,7 +101,7 @@ export default function PrintInvoicePage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white">
         <p className="text-sm text-gray-600">Invoice not found.</p>
-        <Button variant="outline" onClick={() => router.push("/dashboard/finance/invoices")}>
+        <Button variant="outline" onClick={() => router.push(invoicesHref)}>
           Back to invoices
         </Button>
       </div>
@@ -105,16 +112,18 @@ export default function PrintInvoicePage() {
     <div className="invoice-print-page min-h-screen bg-white">
       <div className="no-print sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-white/95 px-4 py-3 backdrop-blur">
         <Button variant="outline" size="sm" asChild>
-          <Link href="/dashboard/finance/invoices">
+          <Link href={invoicesHref}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Link>
         </Button>
         <div className="flex flex-wrap items-center gap-2">
+          {canEmail && (
           <Button variant="outline" size="sm" onClick={() => setEmailOpen(true)}>
             <Mail className="mr-2 h-4 w-4" />
             Send invoice by email
           </Button>
+          )}
           <Button size="sm" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" />
             Print

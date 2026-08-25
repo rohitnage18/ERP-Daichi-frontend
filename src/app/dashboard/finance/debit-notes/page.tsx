@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { canCreateDebitNote } from "@/lib/permissions";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +42,8 @@ const typeLabels: Record<string, string> = {
 };
 
 export default function DebitNotesPage() {
+  const { data: session } = useSession();
+  const showCreate = canCreateDebitNote(session?.user?.role);
   const [debitNotes, setDebitNotes] = useState<DebitNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -75,12 +79,14 @@ export default function DebitNotesPage() {
             Raise additional charges against an invoice (freight, interest, recovery)
           </p>
         </div>
+        {showCreate && (
         <Button asChild>
           <Link href="/dashboard/finance/debit-notes/new">
             <Plus className="mr-2 h-4 w-4" />
             Create debit note
           </Link>
         </Button>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

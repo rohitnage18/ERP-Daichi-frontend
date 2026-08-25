@@ -319,32 +319,105 @@ export default function DashboardPage() {
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Dealers"
-          value={stats ? String(stats.totalDealers) : "—"}
-          icon={Users}
-          description={
-            stats ? `${stats.pendingDealerApprovals} pending approval` : "Loading..."
-          }
-        />
-        <StatCard
-          title="Orders This Month"
-          value={stats ? String(stats.ordersThisMonth) : "—"}
-          icon={ShoppingCart}
-          description={stats ? `${stats.pendingOrders} pending approval` : "Loading..."}
-        />
-        <StatCard
-          title="Products"
-          value={stats ? String(stats.activeProducts) : "—"}
-          icon={Package}
-          description={stats ? `${stats.lowStockCount} low stock` : "Loading..."}
-        />
-        <StatCard
-          title="Revenue (MTD)"
-          value={stats ? formatCurrency(stats.revenueMtd) : "—"}
-          icon={IndianRupee}
-          description={stats ? `${stats.overdueInvoices} overdue invoices` : "Loading..."}
-        />
+        {role === "PRODUCTION_LOGISTICS" ? (
+          <>
+            <StatCard
+              title="Awaiting dispatch"
+              value={stats ? String((stats.pendingInvoiceDispatch || 0) + (stats.pendingDispatch || 0)) : "—"}
+              icon={Truck}
+              description={stats ? `${stats.pendingInvoiceDispatch} invoices · ${stats.pendingDispatch} orders` : "Loading..."}
+            />
+            <StatCard
+              title="In transit"
+              value={stats ? String(stats.activeDispatches) : "—"}
+              icon={ShoppingCart}
+              description={stats ? `${stats.deliveredDispatches} delivered` : "Loading..."}
+            />
+            <StatCard
+              title="Inventory SKUs"
+              value={stats ? String(stats.totalInventorySkus) : "—"}
+              icon={Warehouse}
+              description={stats ? `${stats.lowStockCount} below reorder level` : "Loading..."}
+            />
+            <StatCard
+              title="Products"
+              value={stats ? String(stats.activeProducts) : "—"}
+              icon={Package}
+              description="Active catalog"
+            />
+          </>
+        ) : role === "ACCOUNT" ? (
+          <>
+            <StatCard
+              title="Invoices"
+              value={stats ? String(stats.totalInvoices) : "—"}
+              icon={FileText}
+              description={stats ? `${stats.overdueInvoices} overdue · ${stats.paidInvoices} paid` : "Loading..."}
+            />
+            <StatCard
+              title="Outstanding"
+              value={stats ? formatCurrency(stats.outstandingRevenue) : "—"}
+              icon={IndianRupee}
+              description="Unpaid invoice balance"
+            />
+            <StatCard
+              title="Collected (MTD)"
+              value={stats ? formatCurrency(stats.paymentsMtd) : "—"}
+              icon={CreditCard}
+              description="Payments this month"
+            />
+            <StatCard
+              title="Credit notes"
+              value={stats ? String(stats.pendingCreditNotes) : "—"}
+              icon={Receipt}
+              description={stats ? `${stats.totalCreditNotes} total` : "Loading..."}
+            />
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Total Dealers"
+              value={stats ? String(stats.totalDealers) : "—"}
+              icon={Users}
+              description={
+                stats ? `${stats.pendingDealerApprovals} pending approval` : "Loading..."
+              }
+            />
+            <StatCard
+              title="Orders This Month"
+              value={stats ? String(stats.ordersThisMonth) : "—"}
+              icon={ShoppingCart}
+              description={stats ? `${stats.pendingOrders} pending approval` : "Loading..."}
+            />
+            <StatCard
+              title="Products"
+              value={stats ? String(stats.activeProducts) : "—"}
+              icon={Package}
+              description={
+                role === "MANAGEMENT_ADMIN"
+                  ? stats
+                    ? `${stats.lowStockCount} low stock`
+                    : "Loading..."
+                  : "Active catalog"
+              }
+            />
+            {role === "MANAGEMENT_ADMIN" ? (
+              <StatCard
+                title="Revenue (MTD)"
+                value={stats ? formatCurrency(stats.revenueMtd) : "—"}
+                icon={IndianRupee}
+                description={stats ? `${stats.overdueInvoices} overdue invoices` : "Loading..."}
+              />
+            ) : (
+              <StatCard
+                title="Pending orders"
+                value={stats ? String(stats.pendingOrders) : "—"}
+                icon={Clock}
+                description="Waiting for approval"
+              />
+            )}
+          </>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -552,9 +625,43 @@ export default function DashboardPage() {
                       <span className="text-xs font-medium">Invoices</span>
                     </Link>
                   </Button>
+                  <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                    <Link href="/dashboard/inventory">
+                      <Warehouse className="h-5 w-5" />
+                      <span className="text-xs font-medium">Inventory</span>
+                    </Link>
+                  </Button>
                 </>
               )}
-              {(role === "SALES_MARKETING" || role === "PRODUCTION_LOGISTICS" || role === "MANAGEMENT_ADMIN" || role === "ACCOUNT") && (
+              {role === "ACCOUNT" && (
+                <>
+                  <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                    <Link href="/dashboard/billing">
+                      <FileText className="h-5 w-5" />
+                      <span className="text-xs font-medium">Billing</span>
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                    <Link href="/dashboard/finance/invoices">
+                      <FileText className="h-5 w-5" />
+                      <span className="text-xs font-medium">Invoices</span>
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                    <Link href="/dashboard/finance/payments">
+                      <CreditCard className="h-5 w-5" />
+                      <span className="text-xs font-medium">Payments</span>
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+                    <Link href="/dashboard/finance/credit-notes">
+                      <Receipt className="h-5 w-5" />
+                      <span className="text-xs font-medium">Credit notes</span>
+                    </Link>
+                  </Button>
+                </>
+              )}
+              {(role === "SALES_MARKETING" || role === "PRODUCTION_LOGISTICS" || role === "MANAGEMENT_ADMIN") && (
                 <Button variant="outline" className="h-20 flex-col gap-2" asChild>
                   <Link href="/dashboard/products">
                     <Package className="h-5 w-5" />
@@ -652,6 +759,7 @@ export default function DashboardPage() {
                   )}
                 </>
               )}
+              {role === "MANAGEMENT_ADMIN" && (
               <div className="flex items-start gap-3 rounded-lg border border-brand-100 bg-brand-50/80 p-3">
                 <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
                 <div>
@@ -665,6 +773,7 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               </div>
+              )}
             </div>
           </CardContent>
         </Card>

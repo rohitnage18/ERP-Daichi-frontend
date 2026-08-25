@@ -35,8 +35,8 @@ export default function DashboardLayout({
     const role = session?.user?.role as string | undefined;
     if (!role || !pathname) return;
 
-    if (isPathBlockedForRole(pathname, role)) {
-      router.replace("/dashboard");
+    if (pathname !== "/dashboard/unauthorized" && isPathBlockedForRole(pathname, role)) {
+      router.replace("/dashboard/unauthorized");
     }
   }, [session, pathname, router]);
 

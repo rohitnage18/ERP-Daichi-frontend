@@ -9,6 +9,13 @@ export type AppRole =
   | "PRODUCTION_LOGISTICS"
   | "ACCOUNT";
 
+export const APP_ROLES: AppRole[] = [
+  "SALES_MARKETING",
+  "MANAGEMENT_ADMIN",
+  "PRODUCTION_LOGISTICS",
+  "ACCOUNT",
+];
+
 export function canCreateOrder(role?: string | null): boolean {
   return role === "SALES_MARKETING" || role === "MANAGEMENT_ADMIN";
 }
@@ -29,18 +36,42 @@ export function canApprove(role?: string | null): boolean {
   return role === "MANAGEMENT_ADMIN";
 }
 
+export function canCreateDispatch(role?: string | null): boolean {
+  return role === "PRODUCTION_LOGISTICS" || role === "MANAGEMENT_ADMIN";
+}
+
+export function canGenerateInvoice(role?: string | null): boolean {
+  return role === "ACCOUNT";
+}
+
+export function canViewInvoice(role?: string | null): boolean {
+  return role === "ACCOUNT" || role === "PRODUCTION_LOGISTICS";
+}
+
+export function canManageInvoice(role?: string | null): boolean {
+  return role === "ACCOUNT";
+}
+
+export function canCreateCreditNote(role?: string | null): boolean {
+  return role === "ACCOUNT";
+}
+
+export function canCreateDebitNote(role?: string | null): boolean {
+  return role === "ACCOUNT";
+}
+
 /**
  * Deny-list of path prefixes. More specific allows (e.g. profile) are checked first.
  * Prefer blocking whole modules; allow exceptions via `roleAllowedPrefixes`.
  */
 export const roleAllowedPrefixes: Record<string, string[]> = {
-  SALES_MARKETING: ["/dashboard/settings/profile"],
-  PRODUCTION_LOGISTICS: ["/dashboard/settings/profile"],
-  ACCOUNT: ["/dashboard/settings/profile"],
-  MANAGEMENT_ADMIN: [],
+  SALES_MARKETING: ["/dashboard/settings/profile", "/dashboard/unauthorized"],
+  PRODUCTION_LOGISTICS: ["/dashboard/settings/profile", "/dashboard/unauthorized"],
+  ACCOUNT: ["/dashboard/settings/profile", "/dashboard/unauthorized"],
+  MANAGEMENT_ADMIN: ["/dashboard/unauthorized"],
 };
 
-/** Paths each role must not open (layout redirects to /dashboard). */
+/** Paths each role must not open (layout redirects to /dashboard/unauthorized). */
 export const roleBlockedPrefixes: Record<string, string[]> = {
   MANAGEMENT_ADMIN: [
     "/dashboard/recommendations",
@@ -63,6 +94,7 @@ export const roleBlockedPrefixes: Record<string, string[]> = {
     "/dashboard/reports",
     "/dashboard/finance/payments",
     "/dashboard/finance/credit-notes",
+    "/dashboard/finance/debit-notes",
   ],
   ACCOUNT: [
     "/dashboard/field",
@@ -102,6 +134,10 @@ export function isPathBlockedForRole(
   const allowed = roleAllowedPrefixes[role] || [];
   if (allowed.some((prefix) => matchesPrefix(pathname, prefix))) {
     return false;
+  }
+
+  if (role === "ACCOUNT" && /\/dashboard\/dealers\/[^/]+\/edit\/?$/.test(pathname)) {
+    return true;
   }
 
   const blocked = roleBlockedPrefixes[role];

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { canManageInvoice } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +24,8 @@ import { formatCurrency } from "@/lib/utils";
 
 export default function InvoiceDetailPage() {
   const params = useParams();
+  const { data: session } = useSession();
+  const canManage = canManageInvoice(session?.user?.role);
   const [invoice, setInvoice] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [emailOpen, setEmailOpen] = useState(false);
@@ -121,16 +125,18 @@ export default function InvoiceDetailPage() {
             <p className="text-sm text-muted-foreground">Tax Invoice preview</p>
           </div>
         <div className="flex flex-wrap gap-2">
-          {invoice.status === "DRAFT" && (
+          {canManage && invoice.status === "DRAFT" && (
             <Button variant="outline" onClick={handleFinalize}>
               <CheckCircle className="mr-2 h-4 w-4" />
               Finalize
             </Button>
           )}
+          {canManage && (
           <Button variant="outline" onClick={() => setEmailOpen(true)}>
             <Mail className="mr-2 h-4 w-4" />
             Send Email
           </Button>
+          )}
           <Button variant="outline" onClick={openPrint}>
             <Printer className="mr-2 h-4 w-4" />
             View & Print

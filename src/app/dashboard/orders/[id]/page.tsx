@@ -29,6 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Truck, FileText, Loader2, Pencil, Save, X } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { canCreateDispatch, canGenerateInvoice, canViewInvoice } from "@/lib/permissions";
 
 interface OrderDetail {
   id: string;
@@ -86,7 +87,9 @@ export default function OrderDetailPage() {
   const { data: session } = useSession();
   const role = session?.user?.role;
   const canEditOrder = role === "MANAGEMENT_ADMIN";
-  const canGenerateInvoice = role === "ACCOUNT" || role === "MANAGEMENT_ADMIN";
+  const showGenerateInvoice = canGenerateInvoice(role);
+  const showDispatch = canCreateDispatch(role);
+  const showViewInvoice = canViewInvoice(role);
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,12 +115,13 @@ export default function OrderDetailPage() {
   useEffect(() => {
     if (
       searchParams.get("dispatch") === "true" &&
+      showDispatch &&
       order?.status === "APPROVED" &&
       !order.dispatch
     ) {
       setDispatchOpen(true);
     }
-  }, [searchParams, order]);
+  }, [searchParams, order, showDispatch]);
 
   const fetchOrder = async () => {
     try {
@@ -300,7 +304,7 @@ export default function OrderDetailPage() {
               </Button>
             </>
           )}
-          {canGenerateInvoice &&
+          {showGenerateInvoice &&
             order.status !== "DRAFT" &&
             order.status !== "PENDING_APPROVAL" &&
             order.status !== "CANCELLED" &&
@@ -315,13 +319,13 @@ export default function OrderDetailPage() {
                 Generate Invoice
               </Button>
             )}
-          {order.status === "APPROVED" && !order.dispatch && (
+          {showDispatch && order.status === "APPROVED" && !order.dispatch && (
             <Button onClick={() => setDispatchOpen(true)}>
               <Truck className="mr-2 h-4 w-4" />
               Create Dispatch
             </Button>
           )}
-          {(order.invoice || order.invoiceId) && (
+          {showViewInvoice && (order.invoice || order.invoiceId) && (
             <Button variant="outline" asChild>
               <Link href={`/dashboard/finance/invoices/${order.invoice?.id || order.invoiceId}`}>
                 <FileText className="mr-2 h-4 w-4" />

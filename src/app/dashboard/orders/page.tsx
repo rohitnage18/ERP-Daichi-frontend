@@ -25,7 +25,7 @@ import {
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Plus, Search, Eye, RefreshCw, Loader2, Truck } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { canCreateOrder } from "@/lib/permissions";
+import { canCreateOrder, canCreateDispatch } from "@/lib/permissions";
 
 interface Order {
   id: string;
@@ -48,6 +48,7 @@ interface Order {
 export default function OrdersPage() {
   const { data: session } = useSession();
   const showNewOrder = canCreateOrder(session?.user?.role);
+  const showDispatch = canCreateDispatch(session?.user?.role);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -205,7 +206,7 @@ export default function OrdersPage() {
                             <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
-                        {order.status === "APPROVED" && (
+                        {showDispatch && order.status === "APPROVED" && (
                           <Button variant="ghost" size="icon" asChild title="Create dispatch">
                             <Link href={`/dashboard/orders/${order.id}?dispatch=true`}>
                               <Truck className="h-4 w-4" />

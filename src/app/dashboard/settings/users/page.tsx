@@ -21,6 +21,7 @@ const roleLabels: Record<string, { label: string; color: string }> = {
   SALES_MARKETING: { label: "Sales & Marketing", color: "bg-blue-100 text-blue-800" },
   MANAGEMENT_ADMIN: { label: "Management / Admin", color: "bg-purple-100 text-purple-800" },
   PRODUCTION_LOGISTICS: { label: "Production & Logistics", color: "bg-green-100 text-green-800" },
+  ACCOUNT: { label: "Accounts & Finance", color: "bg-amber-100 text-amber-800" },
 };
 
 interface UserRow {

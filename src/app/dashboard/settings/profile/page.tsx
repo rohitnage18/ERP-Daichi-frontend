@@ -7,6 +7,7 @@ const roleLabels: Record<string, string> = {
   SALES_MARKETING: "Sales & Marketing",
   MANAGEMENT_ADMIN: "Management / Admin",
   PRODUCTION_LOGISTICS: "Production & Logistics",
+  ACCOUNT: "Accounts & Finance",
 };
 
 export default function ProfilePage() {

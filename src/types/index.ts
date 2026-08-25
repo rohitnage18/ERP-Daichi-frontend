@@ -28,7 +28,11 @@ declare module "next-auth/jwt" {
   }
 }
 
-export type UserRole = "SALES_MARKETING" | "MANAGEMENT_ADMIN" | "PRODUCTION_LOGISTICS";
+export type UserRole =
+  | "SALES_MARKETING"
+  | "MANAGEMENT_ADMIN"
+  | "PRODUCTION_LOGISTICS"
+  | "ACCOUNT";
 
 export type DealerStatus = "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "INACTIVE";
 
