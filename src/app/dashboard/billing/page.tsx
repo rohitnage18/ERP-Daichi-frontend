@@ -359,12 +359,13 @@ export default function BillingPage() {
 
     const totalTax = totalCgst + totalSgst + totalIgst;
     const freight = Math.max(0, freightCharges || 0);
-    const { roundOff, totalAmount } = payableInvoiceTotals({
+    const { roundOff, totalAmount, goodsTotal } = payableInvoiceTotals({
       subtotal,
       totalTax,
       cgstAmount: totalCgst,
       sgstAmount: totalSgst,
       igstAmount: totalIgst,
+      freightCharges: freight,
     });
 
     return {
@@ -374,6 +375,7 @@ export default function BillingPage() {
       igst: totalIgst,
       totalTax,
       freightCharges: freight,
+      goodsTotal,
       roundOff,
       grandTotal: totalAmount,
     };
@@ -1009,17 +1011,30 @@ export default function BillingPage() {
                   <span className="text-muted-foreground">IGST</span>
                   <span className="tabular-nums">{formatCurrency(totals.igst)}</span>
                 </div>
+                <div className="border-t pt-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total Tax</span>
+                    <span className="tabular-nums">{formatCurrency(totals.totalTax)}</span>
+                  </div>
+                </div>
+                <div className="flex justify-between text-sm font-medium">
+                  <span>Goods + GST</span>
+                  <span className="tabular-nums">{formatCurrency(totals.goodsTotal)}</span>
+                </div>
                 <div className="flex justify-between text-sm items-center gap-2">
-                  <span className="text-muted-foreground">Freight Charges</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={freightCharges || ""}
-                    onChange={(e) => setFreightCharges(Math.max(0, parseFloat(e.target.value) || 0))}
-                    placeholder="0"
-                    className="h-8 w-28 text-right tabular-nums"
-                  />
+                  <span className="text-muted-foreground">Freight Charges (less)</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-muted-foreground">−</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={freightCharges || ""}
+                      onChange={(e) => setFreightCharges(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="0"
+                      className="h-8 w-28 text-right tabular-nums"
+                    />
+                  </div>
                 </div>
                 {totals.roundOff !== 0 && (
                   <div className="flex justify-between text-sm">
@@ -1027,12 +1042,12 @@ export default function BillingPage() {
                     <span className="tabular-nums">{totals.roundOff.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="border-t pt-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Total Tax</span>
-                    <span className="tabular-nums">{formatCurrency(totals.totalTax)}</span>
-                  </div>
-                </div>
+                {totals.freightCharges > 0 && (
+                  <p className="text-right text-xs text-muted-foreground">
+                    {formatCurrency(totals.goodsTotal)} − {formatCurrency(totals.freightCharges)} ={" "}
+                    {formatCurrency(totals.grandTotal)}
+                  </p>
+                )}
                 <div className="border-t pt-2">
                   <div className="flex justify-between text-lg font-bold">
                     <span>Grand Total</span>

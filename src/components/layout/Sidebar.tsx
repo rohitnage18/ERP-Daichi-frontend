@@ -68,7 +68,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const navHrefs = filteredNavigation.map((item) => item.href);
 
   return (
-    <nav className="flex-1 space-y-0.5 overflow-y-auto p-3 no-scrollbar">
+    <nav data-testid="sidebar-nav" className="flex-1 space-y-0.5 overflow-y-auto p-3 no-scrollbar">
       {filteredNavigation.map((item) => {
         const isActive = isNavItemActive(pathname, item.href, navHrefs);
         return (

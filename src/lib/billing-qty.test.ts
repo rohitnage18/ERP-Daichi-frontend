@@ -26,17 +26,80 @@ describe("billing qty scales with units per case", () => {
   });
 });
 
-describe("freight is not part of payable total", () => {
-  it("rounds goods + tax only (freight 100 does not change total)", () => {
+describe("freight is subtracted from payable total", () => {
+  it("₹2,000 goods+GST minus ₹200 freight is ₹1,800", () => {
+    const payable = payableInvoiceTotals({
+      subtotal: 2000,
+      totalTax: 0,
+      freightCharges: 200,
+    });
+    assert.equal(payable.goodsTotal, 2000);
+    assert.equal(payable.totalAmount, 1800);
+  });
+
+  it("screenshot case: 1995 + 49.88 + 49.88 rounded 2095 minus freight 200 is 1895", () => {
     const payable = payableInvoiceTotals({
       subtotal: 1995,
       cgstAmount: 49.88,
       sgstAmount: 49.88,
       igstAmount: 0,
       totalTax: 99.76,
+      freightCharges: 200,
     });
-    assert.equal(payable.totalAmount, 2095);
+    assert.equal(payable.goodsTotal, 2095);
+    assert.equal(payable.totalAmount, 1895);
+  });
+
+  it("goods + tax 7560 minus freight 200 is 7360", () => {
+    const payable = payableInvoiceTotals({
+      subtotal: 7200,
+      cgstAmount: 180,
+      sgstAmount: 180,
+      igstAmount: 0,
+      totalTax: 360,
+      freightCharges: 200,
+    });
+    assert.equal(payable.totalAmount, 7360);
+    assert.equal(payable.roundOff, 0);
+  });
+
+  it("rounds goods + tax first, then less freight", () => {
+    const payable = payableInvoiceTotals({
+      subtotal: 1995,
+      cgstAmount: 49.88,
+      sgstAmount: 49.88,
+      igstAmount: 0,
+      totalTax: 99.76,
+      freightCharges: 100,
+    });
+    assert.equal(payable.totalAmount, 1995);
     assert.equal(payable.roundOff, 0.24);
+  });
+
+  it("ignores negative freight", () => {
+    const payable = payableInvoiceTotals({
+      subtotal: 1000,
+      totalTax: 50,
+      freightCharges: -80,
+    });
+    assert.equal(payable.totalAmount, 1050);
+  });
+
+  it("fuzz: payable never exceeds rounded goods+tax", () => {
+    for (let i = 0; i < 200; i++) {
+      const subtotal = Math.round(Math.random() * 1e6);
+      const tax = Math.round(Math.random() * 1e5);
+      const freightRaw = i % 11 === 0 ? -50 : Math.round(Math.random() * 1e5);
+      const payable = payableInvoiceTotals({
+        subtotal,
+        totalTax: tax,
+        freightCharges: freightRaw,
+      });
+      const goods = Math.round(subtotal + tax);
+      assert.ok(payable.totalAmount >= 0);
+      assert.ok(payable.totalAmount <= goods);
+      assert.equal(payable.totalAmount, Math.max(0, goods - Math.max(0, freightRaw)));
+    }
   });
 });
 

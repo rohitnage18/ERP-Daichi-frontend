@@ -9,6 +9,7 @@ import {
   resolveUnitsPerCase,
   numberToWords,
   payableInvoiceTotals,
+  freightAmount,
 } from "@/lib/invoice-utils";
 
 interface TaxInvoiceDocumentProps {
@@ -452,17 +453,6 @@ function ItemsTable({
               </React.Fragment>
             ))}
 
-            {invoice.freightCharges ? (
-              <tr>
-                <td className={cellClass} colSpan={7}>
-                  Freight Charges (less)
-                </td>
-                <td className={`${cellClass} text-right tabular-nums`}>
-                  {formatInvoiceAmount(Math.abs(Number(invoice.freightCharges)))}
-                </td>
-              </tr>
-            ) : null}
-
             {payable.roundOff !== 0 ? (
               <tr>
                 <td className={cellClass} colSpan={7}>
@@ -470,6 +460,28 @@ function ItemsTable({
                 </td>
                 <td className={`${cellClass} text-right tabular-nums`}>
                   {payable.roundOff.toFixed(2)}
+                </td>
+              </tr>
+            ) : null}
+
+            {freightAmount(invoice) > 0 ? (
+              <tr>
+                <td className={cellClass} colSpan={7}>
+                  Total (goods + GST)
+                </td>
+                <td className={`${cellClass} text-right tabular-nums`}>
+                  {formatInvoiceAmount(payable.goodsTotal)}
+                </td>
+              </tr>
+            ) : null}
+
+            {freightAmount(invoice) > 0 ? (
+              <tr>
+                <td className={cellClass} colSpan={7}>
+                  Freight Charges (less)
+                </td>
+                <td className={`${cellClass} text-right tabular-nums`}>
+                  ({formatInvoiceAmount(freightAmount(invoice))})
                 </td>
               </tr>
             ) : null}
@@ -486,7 +498,7 @@ function ItemsTable({
               </td>
               <td className={cellClass} colSpan={2} />
               <td className={`${cellClass} text-right tabular-nums`}>
-                ₹ {formatInvoiceAmount(payable.totalAmount)}
+                ₹ {formatInvoiceAmount(Math.max(0, payable.goodsTotal - freightAmount(invoice)))}
               </td>
             </tr>
           </>
@@ -639,13 +651,7 @@ export function TaxInvoiceDocument({ invoice }: TaxInvoiceDocumentProps) {
   const taxRateGroups = buildTaxRateGroups(allItems);
   const hsnRows = buildHsnTaxRows(allItems);
   const pages = paginateItems(allItems);
-  const payable = payableInvoiceTotals({
-    subtotal: invoice.subtotal,
-    totalTax: invoice.totalTax,
-    cgstAmount: invoice.cgstAmount,
-    sgstAmount: invoice.sgstAmount,
-    igstAmount: invoice.igstAmount,
-  });
+  const payable = payableInvoiceTotals(invoice);
 
   return (
     <div className="tax-invoice-document mx-auto max-w-[210mm] bg-white font-serif text-black leading-snug">

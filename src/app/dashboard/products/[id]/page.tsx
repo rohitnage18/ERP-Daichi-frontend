@@ -42,6 +42,10 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const canEdit = canCreateProduct(session?.user?.role);
+  const canEditStock =
+    canEdit ||
+    session?.user?.role === "PRODUCTION_LOGISTICS" ||
+    session?.user?.role === "ACCOUNT";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -214,7 +218,7 @@ export default function ProductDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle>Stock Remaining</CardTitle>
-          <CardDescription>Warehouse quantity on hand (deducted on dispatch)</CardDescription>
+          <CardDescription>Warehouse quantity on hand (reduced when an invoice is generated)</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="space-y-2">
@@ -223,7 +227,7 @@ export default function ProductDetailPage() {
               type="number"
               min={0}
               value={stockInput}
-              disabled={!canEdit}
+              disabled={!canEditStock}
               onChange={(e) => setStockInput(e.target.value)}
             />
           </div>
@@ -233,11 +237,11 @@ export default function ProductDetailPage() {
               type="number"
               min={0}
               value={reorderLevel}
-              disabled={!canEdit}
+              disabled={!canEditStock}
               onChange={(e) => setReorderLevel(e.target.value)}
             />
           </div>
-          {canEdit && (
+          {canEditStock && (
             <div className="flex items-end">
               <Button type="button" variant="outline" onClick={handleSaveStock} disabled={savingStock}>
                 {savingStock && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

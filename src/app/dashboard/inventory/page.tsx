@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import {
   Table,
@@ -13,10 +15,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Warehouse, AlertTriangle } from "lucide-react";
+import { Search, Warehouse, AlertTriangle, Loader2 } from "lucide-react";
 
 interface InventoryItem {
   id: string;
+  productId?: string;
   quantity: number;
   reorderLevel: number;
   warehouseCode: string;
@@ -48,7 +51,19 @@ function isLiquidProduct(item: InventoryItem): boolean {
   return /\b(ml|ltr|lit|litre|liter)\b/.test(blob);
 }
 
-function StockTable({ items }: { items: InventoryItem[] }) {
+function StockTable({
+  items,
+  canEdit,
+  savingId,
+  onSave,
+}: {
+  items: InventoryItem[];
+  canEdit: boolean;
+  savingId: string | null;
+  onSave: (item: InventoryItem, quantity: number) => void;
+}) {
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+
   if (items.length === 0) {
     return <p className="py-6 text-center text-sm text-muted-foreground">No products in this group</p>;
   }
@@ -70,6 +85,7 @@ function StockTable({ items }: { items: InventoryItem[] }) {
       <TableBody>
         {items.map((item) => {
           const isLowStock = item.quantity <= item.reorderLevel;
+          const draft = drafts[item.id] ?? String(item.quantity);
           return (
             <TableRow key={item.id}>
               <TableCell className="font-medium">{item.product.productCode}</TableCell>
@@ -78,7 +94,30 @@ function StockTable({ items }: { items: InventoryItem[] }) {
               <TableCell>{item.product.subCategory.name}</TableCell>
               <TableCell>{item.warehouseCode}</TableCell>
               <TableCell className="text-right">
-                {item.quantity.toLocaleString()} {item.product.unitOfMeasure}
+                {canEdit ? (
+                  <div className="flex items-center justify-end gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      className="h-8 w-24 text-right"
+                      value={draft}
+                      onChange={(e) => setDrafts((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                    />
+                    <span className="text-xs text-muted-foreground">{item.product.unitOfMeasure}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={savingId === item.id || Number(draft) === item.quantity}
+                      onClick={() => onSave(item, Math.max(0, Number(draft) || 0))}
+                    >
+                      {savingId === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    {item.quantity.toLocaleString()} {item.product.unitOfMeasure}
+                  </>
+                )}
               </TableCell>
               <TableCell className="text-right">{item.reorderLevel.toLocaleString()}</TableCell>
               <TableCell>
@@ -100,9 +139,14 @@ function StockTable({ items }: { items: InventoryItem[] }) {
 }
 
 export default function InventoryPage() {
+  const { data: session } = useSession();
+  const canEdit =
+    session?.user?.role === "PRODUCTION_LOGISTICS" ||
+    session?.user?.role === "MANAGEMENT_ADMIN";
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInventory();
@@ -126,6 +170,33 @@ export default function InventoryPage() {
       item.product.name.toLowerCase().includes(search.toLowerCase()) ||
       item.product.productCode.toLowerCase().includes(search.toLowerCase())
   );
+
+  const saveStock = async (item: InventoryItem, quantity: number) => {
+    const targetId = item.productId || item.id;
+    setSavingId(item.id);
+    try {
+      const res = await apiFetch(`/api/inventory/${targetId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quantity }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInventory((prev) =>
+          prev.map((row) =>
+            row.id === item.id ? { ...row, quantity: Number(data.quantity) || 0 } : row
+          )
+        );
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Could not update stock.");
+      }
+    } catch {
+      alert("Network error");
+    } finally {
+      setSavingId(null);
+    }
+  };
 
   const kgStock = filteredInventory.filter((item) => !isLiquidProduct(item));
   const ltrStock = filteredInventory.filter((item) => isLiquidProduct(item));
@@ -202,7 +273,7 @@ export default function InventoryPage() {
               <CardDescription>Powder and granule products (Kg / Gm packing)</CardDescription>
             </CardHeader>
             <CardContent>
-              <StockTable items={kgStock} />
+              <StockTable items={kgStock} canEdit={canEdit} savingId={savingId} onSave={saveStock} />
             </CardContent>
           </Card>
 
@@ -212,7 +283,7 @@ export default function InventoryPage() {
               <CardDescription>Liquid products (Litre / ml packing)</CardDescription>
             </CardHeader>
             <CardContent>
-              <StockTable items={ltrStock} />
+              <StockTable items={ltrStock} canEdit={canEdit} savingId={savingId} onSave={saveStock} />
             </CardContent>
           </Card>
         </>
