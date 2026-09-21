@@ -19,7 +19,8 @@ export default function DailyActivityPage() {
   const [loading, setLoading] = useState(false);
   const [booting, setBooting] = useState(true);
   const [done, setDone] = useState(false);
-  const [existingId, setExistingId] = useState<string | null>(null);
+  const [darId, setDarId] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
   const [closed, setClosed] = useState(false);
   const [reportDate, setReportDate] = useState(dateKeyIST());
   const [placesToVisit, setPlacesToVisit] = useState<string[]>([""]);
@@ -35,7 +36,8 @@ export default function DailyActivityPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d?.activity) {
-          setExistingId(d.id);
+          setDarId(d.darId || null);
+          setLocked(true);
           setPlacesToVisit(d.activity.placesToVisit?.length ? d.activity.placesToVisit : [""]);
           setSalesTarget(String(d.activity.salesTarget ?? ""));
           setCollectionTarget(String(d.activity.collectionTarget ?? ""));
@@ -69,6 +71,8 @@ export default function DailyActivityPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        setDarId(data.darId || null);
+        setLocked(true);
         setDone(true);
         setTimeout(() => router.push("/dashboard/field"), 1100);
       } else {
@@ -93,8 +97,9 @@ export default function DailyActivityPage() {
     return (
       <div className="mx-auto max-w-lg py-16 text-center">
         <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-600" />
-        <h2 className="mt-4 text-2xl font-bold">{existingId ? "Updated" : "Submitted"}</h2>
-        <p className="text-muted-foreground">Daily Activity Report saved.</p>
+        <h2 className="mt-4 text-2xl font-bold">Submitted & locked</h2>
+        <p className="text-muted-foreground">Daily Activity Report saved{darId ? ` (${darId})` : ""}.</p>
+        <p className="mt-2 text-sm text-muted-foreground">You can now log field visits. Plan cannot be edited.</p>
       </div>
     );
   }
@@ -112,20 +117,44 @@ export default function DailyActivityPage() {
             Today is already closed. Historical reports stay in My history / team reports and cannot be overwritten.
           </CardContent>
         </Card>
+      ) : locked ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Today&apos;s plan (locked)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {darId && (
+              <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 font-medium">
+                DAR ID: {darId}
+              </p>
+            )}
+            <p>
+              <span className="text-muted-foreground">Places: </span>
+              {placesToVisit.filter(Boolean).join(", ") || "—"}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Sales / collection target: </span>₹{salesTarget} / ₹
+              {collectionTarget}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Opening odometer: </span>
+              {openingOdometer || "—"}
+            </p>
+            <p className="text-muted-foreground">
+              DAR is locked after submit. Submit your Daily Closing Report at end of day.
+            </p>
+            <Button type="button" variant="outline" className="w-full" onClick={() => router.push("/dashboard/field")}>
+              Back to field home
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <form onSubmit={submit}>
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">
-                {existingId ? "Update today's plan" : "Start-of-day plan"}
-              </CardTitle>
+              <CardTitle className="text-lg">Start-of-day plan</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
-              {existingId && (
-                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
-                  A report already exists for today. Saving will update the plan (not create a second one).
-                </p>
-              )}
               {isAdmin && (
                 <div className="space-y-2">
                   <Label>Report date</Label>
@@ -144,15 +173,24 @@ export default function DailyActivityPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="openingOdometer">Opening odometer</Label>
-                <Input id="openingOdometer" type="number" min={0} step="0.1" className="h-12 text-lg" value={openingOdometer} onChange={(e) => setOpeningOdometer(e.target.value)} />
+                <Label htmlFor="openingOdometer">Opening odometer *</Label>
+                <Input
+                  id="openingOdometer"
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  required
+                  className="h-12 text-lg"
+                  value={openingOdometer}
+                  onChange={(e) => setOpeningOdometer(e.target.value)}
+                />
               </div>
               <ListEditor label="New dealer appointment plan" values={newDealerPlan} onChange={setNewDealerPlan} placeholder="Who / where" />
               <ListEditor label="Demonstration plan" values={demoPlan} onChange={setDemoPlan} placeholder="Product demo details" />
               <ListEditor label="Farmer meeting plan" values={farmerPlan} onChange={setFarmerPlan} placeholder="Meeting place / agenda" />
               <Button type="submit" size="lg" className="h-14 w-full text-lg" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                {existingId ? "Update plan" : "Submit plan"}
+                Submit plan (locks DAR)
               </Button>
             </CardContent>
           </Card>

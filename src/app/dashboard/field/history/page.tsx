@@ -83,6 +83,11 @@ export default function FieldHistoryPage() {
                 <Card key={rep.id || rep._id}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">{formatDate(rep.reportDate)}</CardTitle>
+                    {(rep.darId || rep.dcrId) && (
+                      <p className="text-xs font-mono text-muted-foreground">
+                        {rep.darId || "—"} · {rep.dcrId || "—"}
+                      </p>
+                    )}
                   </CardHeader>
                   <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
                     <div>

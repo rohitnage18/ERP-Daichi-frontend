@@ -41,6 +41,7 @@ export default function DailyClosingPage() {
   const [newDealerDetails, setNewDealerDetails] = useState("");
   const [farmers, setFarmers] = useState([{ name: "", location: "", notes: "" }]);
   const [otherWork, setOtherWork] = useState("");
+  const [dcrId, setDcrId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -57,6 +58,7 @@ export default function DailyClosingPage() {
         }
         if (today.hasClosing) {
           setAlreadyClosed(true);
+          setDcrId(today.dcrId || null);
           return;
         }
         setOpeningOdometer(today.activity?.openingOdometer ?? null);
@@ -93,6 +95,7 @@ export default function DailyClosingPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        setDcrId(data.dcrId || null);
         setDone(true);
         setTimeout(() => router.push("/dashboard/field/history"), 1100);
       } else {
@@ -117,8 +120,8 @@ export default function DailyClosingPage() {
     return (
       <div className="mx-auto max-w-lg py-16 text-center">
         <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-600" />
-        <h2 className="mt-4 text-2xl font-bold">Day closed</h2>
-        <p className="text-muted-foreground">Closing report saved.</p>
+        <h2 className="mt-4 text-2xl font-bold">Day closed & locked</h2>
+        <p className="text-muted-foreground">Closing report saved{dcrId ? ` (${dcrId})` : ""}.</p>
       </div>
     );
   }
@@ -143,8 +146,12 @@ export default function DailyClosingPage() {
 
       {alreadyClosed && (
         <Card>
-          <CardContent className="pt-6 text-sm text-muted-foreground">
-            Today&apos;s closing report is already submitted. Historical records are kept and cannot be submitted twice.
+          <CardContent className="pt-6 text-sm text-muted-foreground space-y-2">
+            {dcrId && <p className="font-medium text-foreground">DCR ID: {dcrId}</p>}
+            <p>
+              Today&apos;s closing report is already submitted and locked. Historical records are kept and cannot be
+              submitted twice.
+            </p>
           </CardContent>
         </Card>
       )}

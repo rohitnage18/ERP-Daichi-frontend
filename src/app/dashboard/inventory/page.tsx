@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api";
 import {
   Table,
@@ -15,15 +16,29 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Warehouse, AlertTriangle, Loader2, Upload } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Warehouse, AlertTriangle, Loader2, Upload, Plus } from "lucide-react";
 
 interface InventoryItem {
   id: string;
   productId?: string;
   quantity: number;
+  reservedQuantity?: number;
+  availableQuantity?: number;
+  displayCases?: number;
+  unitsPerCase?: number;
+  baseUnit?: string;
   reorderLevel: number;
   warehouseCode: string;
   lastUpdated: string;
+  lowStock?: boolean;
+  zeroStock?: boolean;
   product: {
     productCode: string;
     name: string;
@@ -31,6 +46,7 @@ interface InventoryItem {
     packingType?: string;
     packingUnit?: string;
     unitOfMeasure: string;
+    unitsPerAlternate?: number;
     subCategory: {
       name: string;
     };
@@ -40,11 +56,7 @@ interface InventoryItem {
 function isLiquidProduct(item: InventoryItem): boolean {
   if (item.product.packingType === "LIQUID") return true;
   if (item.product.packingType === "POWDER_GRANULES") return false;
-  const blob = [
-    item.product.packingSize,
-    item.product.packingUnit,
-    item.product.unitOfMeasure,
-  ]
+  const blob = [item.product.packingSize, item.product.packingUnit, item.product.unitOfMeasure]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -56,11 +68,13 @@ function StockTable({
   canEdit,
   savingId,
   onSave,
+  onSelectProduct,
 }: {
   items: InventoryItem[];
   canEdit: boolean;
   savingId: string | null;
   onSave: (item: InventoryItem, quantity: number) => void;
+  onSelectProduct: (productId: string) => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
@@ -75,25 +89,35 @@ function StockTable({
           <TableHead>Product Code</TableHead>
           <TableHead>Product Name</TableHead>
           <TableHead>Packing</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Warehouse</TableHead>
-          <TableHead className="text-right">Quantity</TableHead>
-          <TableHead className="text-right">Reorder Level</TableHead>
+          <TableHead className="text-right">On hand</TableHead>
+          <TableHead className="text-right">Reserved</TableHead>
+          <TableHead className="text-right">Available</TableHead>
+          <TableHead className="text-right">Cases</TableHead>
+          <TableHead className="text-right">Units/Case</TableHead>
+          <TableHead>WH</TableHead>
           <TableHead>Status</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {items.map((item) => {
-          const isLowStock = item.quantity <= item.reorderLevel;
+          const isLow = item.lowStock ?? item.quantity <= item.reorderLevel;
+          const isZero = item.zeroStock ?? item.quantity <= 0;
           const draft = drafts[item.id] ?? String(item.quantity);
+          const upc = item.unitsPerCase || item.product.unitsPerAlternate || 1;
+          const cases = item.displayCases ?? Math.floor(item.quantity / upc + 0.5);
+          const base = item.baseUnit || (item.product.unitOfMeasure?.toLowerCase() === "kg" ? "KG" : "Nos");
+          const reserved = item.reservedQuantity ?? 0;
+          const available = item.availableQuantity ?? Math.max(0, item.quantity - reserved);
           return (
-            <TableRow key={item.id}>
+            <TableRow
+              key={item.id}
+              className="cursor-pointer"
+              onClick={() => onSelectProduct(item.productId || item.id)}
+            >
               <TableCell className="font-medium">{item.product.productCode}</TableCell>
               <TableCell>{item.product.name}</TableCell>
               <TableCell className="text-sm">{item.product.packingSize || "—"}</TableCell>
-              <TableCell>{item.product.subCategory.name}</TableCell>
-              <TableCell>{item.warehouseCode}</TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 {canEdit ? (
                   <div className="flex items-center justify-end gap-2">
                     <Input
@@ -103,7 +127,7 @@ function StockTable({
                       value={draft}
                       onChange={(e) => setDrafts((prev) => ({ ...prev, [item.id]: e.target.value }))}
                     />
-                    <span className="text-xs text-muted-foreground">{item.product.unitOfMeasure}</span>
+                    <span className="text-xs text-muted-foreground">{base}</span>
                     <Button
                       size="sm"
                       variant="outline"
@@ -115,16 +139,22 @@ function StockTable({
                   </div>
                 ) : (
                   <>
-                    {item.quantity.toLocaleString()} {item.product.unitOfMeasure}
+                    {item.quantity.toLocaleString()} {base}
                   </>
                 )}
               </TableCell>
-              <TableCell className="text-right">{item.reorderLevel.toLocaleString()}</TableCell>
+              <TableCell className="text-right text-muted-foreground">{reserved.toLocaleString()}</TableCell>
+              <TableCell className="text-right font-medium">{available.toLocaleString()}</TableCell>
+              <TableCell className="text-right font-medium">{cases.toLocaleString()}</TableCell>
+              <TableCell className="text-right text-muted-foreground">{upc}</TableCell>
+              <TableCell className="text-xs text-muted-foreground">{item.warehouseCode || "—"}</TableCell>
               <TableCell>
-                {isLowStock ? (
+                {isZero ? (
+                  <Badge variant="destructive">Zero</Badge>
+                ) : isLow ? (
                   <Badge variant="destructive" className="flex w-fit items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />
-                    Low Stock
+                    Low
                   </Badge>
                 ) : (
                   <Badge variant="success">In Stock</Badge>
@@ -141,9 +171,9 @@ function StockTable({
 export default function InventoryPage() {
   const { data: session } = useSession();
   const canEdit =
-    session?.user?.role === "PRODUCTION_LOGISTICS" ||
-    session?.user?.role === "MANAGEMENT_ADMIN";
+    session?.user?.role === "PRODUCTION_LOGISTICS" || session?.user?.role === "MANAGEMENT_ADMIN";
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [grandTotalCases, setGrandTotalCases] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -154,21 +184,44 @@ export default function InventoryPage() {
     errors: { row: number; sku?: string; error: string }[];
   } | null>(null);
   const [movements, setMovements] = useState<any[]>([]);
+  const [historyProductId, setHistoryProductId] = useState<string>("all");
+  const [inwardProductId, setInwardProductId] = useState("");
+  const [inwardQty, setInwardQty] = useState("");
+  const [inwardUnit, setInwardUnit] = useState("CASE");
+  const [inwardDate, setInwardDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [inwardRemarks, setInwardRemarks] = useState("");
+  const [inwardSaving, setInwardSaving] = useState(false);
+  const [xferProductId, setXferProductId] = useState("");
+  const [xferQty, setXferQty] = useState("");
+  const [xferFrom, setXferFrom] = useState("MAIN");
+  const [xferTo, setXferTo] = useState("WH-2");
+  const [xferRemarks, setXferRemarks] = useState("");
+  const [xferSaving, setXferSaving] = useState(false);
   const canUpload = canEdit;
 
   useEffect(() => {
     fetchInventory();
-    apiFetch("/api/inventory/movements")
-      .then((r) => r.json())
-      .then((d) => setMovements(Array.isArray(d) ? d : []))
-      .catch(() => setMovements([]));
+    loadMovements();
   }, []);
+
+  const loadMovements = async (productId?: string) => {
+    const q = productId && productId !== "all" ? `?productId=${productId}` : "";
+    const r = await apiFetch(`/api/inventory/movements${q}`);
+    const d = await r.json();
+    setMovements(Array.isArray(d) ? d : []);
+  };
 
   const fetchInventory = async () => {
     try {
       const res = await apiFetch("/api/inventory");
       const data = await res.json();
-      setInventory(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) {
+        setInventory(data);
+        setGrandTotalCases(0);
+      } else {
+        setInventory(Array.isArray(data.items) ? data.items : []);
+        setGrandTotalCases(Number(data.grandTotalCases) || 0);
+      }
     } catch (error) {
       console.error("Failed to fetch inventory:", error);
       setInventory([]);
@@ -206,8 +259,7 @@ export default function InventoryPage() {
       }
       setUploadResult(data);
       await fetchInventory();
-      const ledger = await apiFetch("/api/inventory/movements");
-      setMovements(await ledger.json());
+      await loadMovements(historyProductId);
     } catch {
       alert("Could not read file");
     } finally {
@@ -225,12 +277,8 @@ export default function InventoryPage() {
         body: JSON.stringify({ quantity }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setInventory((prev) =>
-          prev.map((row) =>
-            row.id === item.id ? { ...row, quantity: Number(data.quantity) || 0 } : row
-          )
-        );
+        await fetchInventory();
+        await loadMovements(historyProductId);
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.error || "Could not update stock.");
@@ -242,22 +290,232 @@ export default function InventoryPage() {
     }
   };
 
+  const submitInward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inwardProductId) {
+      alert("Select a product");
+      return;
+    }
+    setInwardSaving(true);
+    try {
+      const res = await apiFetch("/api/inventory/inward", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: inwardProductId,
+          quantity: Number(inwardQty),
+          unit: inwardUnit,
+          date: inwardDate,
+          remarks: inwardRemarks || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Could not add stock");
+        return;
+      }
+      setInwardQty("");
+      setInwardRemarks("");
+      await fetchInventory();
+      await loadMovements(historyProductId);
+    } finally {
+      setInwardSaving(false);
+    }
+  };
+
+  const submitTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!xferProductId) {
+      alert("Select a product");
+      return;
+    }
+    setXferSaving(true);
+    try {
+      const res = await apiFetch("/api/inventory/transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: xferProductId,
+          quantity: Number(xferQty),
+          fromWarehouse: xferFrom,
+          toWarehouse: xferTo,
+          remarks: xferRemarks || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Could not transfer stock");
+        return;
+      }
+      setXferQty("");
+      setXferRemarks("");
+      await fetchInventory();
+      await loadMovements(historyProductId);
+    } finally {
+      setXferSaving(false);
+    }
+  };
+
   const kgStock = filteredInventory.filter((item) => !isLiquidProduct(item));
   const ltrStock = filteredInventory.filter((item) => isLiquidProduct(item));
   const lowStockCount = inventory.filter((item) => item.quantity <= item.reorderLevel).length;
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Inventory</h1>
-        <p className="text-muted-foreground">Monitor stock levels by packing — Kg and Litre separately</p>
+        <p className="text-muted-foreground">
+          Finished goods in base units (Nos / KG). Cases are Tally-style rounded display only.
+        </p>
       </div>
+
+      {canEdit && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Add stock (inward)
+            </CardTitle>
+            <CardDescription>
+              Adds to on-hand quantity and writes an INWARD ledger entry. Enter Cases or Nos/KG.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submitInward} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="space-y-1 lg:col-span-2">
+                <Label>Product</Label>
+                <Select value={inwardProductId} onValueChange={setInwardProductId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select product" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {inventory.map((item) => (
+                      <SelectItem key={item.id} value={item.productId || item.id}>
+                        {item.product.productCode} — {item.product.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  min={0.01}
+                  step="any"
+                  required
+                  value={inwardQty}
+                  onChange={(e) => setInwardQty(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Unit</Label>
+                <Select value={inwardUnit} onValueChange={setInwardUnit}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CASE">Case</SelectItem>
+                    <SelectItem value="NOS">Nos</SelectItem>
+                    <SelectItem value="KG">KG</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Date</Label>
+                <Input type="date" value={inwardDate} onChange={(e) => setInwardDate(e.target.value)} />
+              </div>
+              <div className="space-y-1 sm:col-span-2 lg:col-span-4">
+                <Label>Remarks</Label>
+                <Input value={inwardRemarks} onChange={(e) => setInwardRemarks(e.target.value)} placeholder="Optional" />
+              </div>
+              <div className="flex items-end">
+                <Button type="submit" disabled={inwardSaving} className="w-full">
+                  {inwardSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add stock"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {canEdit && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Warehouse className="h-5 w-5" />
+              Warehouse transfer
+            </CardTitle>
+            <CardDescription>
+              Move available stock between warehouse codes. Reserved qty stays on the source until released.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submitTransfer} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="space-y-1 lg:col-span-2">
+                <Label>Product</Label>
+                <Select value={xferProductId} onValueChange={setXferProductId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select product" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {inventory.map((item) => (
+                      <SelectItem key={`xfer-${item.id}`} value={item.productId || item.id}>
+                        {item.product.productCode} — {item.warehouseCode || "MAIN"} (
+                        {(item.availableQuantity ?? item.quantity).toLocaleString()} avail)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Qty (base)</Label>
+                <Input
+                  type="number"
+                  min={0.01}
+                  step="any"
+                  required
+                  value={xferQty}
+                  onChange={(e) => setXferQty(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>From WH</Label>
+                <Input value={xferFrom} onChange={(e) => setXferFrom(e.target.value)} required />
+              </div>
+              <div className="space-y-1">
+                <Label>To WH</Label>
+                <Input value={xferTo} onChange={(e) => setXferTo(e.target.value)} required />
+              </div>
+              <div className="space-y-1 sm:col-span-2 lg:col-span-4">
+                <Label>Remarks</Label>
+                <Input value={xferRemarks} onChange={(e) => setXferRemarks(e.target.value)} placeholder="Optional" />
+              </div>
+              <div className="flex items-end">
+                <Button type="submit" disabled={xferSaving} className="w-full">
+                  {xferSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Transfer"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {canUpload && (
         <Card>
           <CardHeader>
             <CardTitle>Bulk upload</CardTitle>
-            <CardDescription>CSV or Excel with columns SKU (or Product Code) and Quantity. Valid rows update stock; bad rows are reported.</CardDescription>
+            <CardDescription>
+              CSV/Excel with SKU and Quantity. Sets absolute base qty (ADJUSTMENT), not an inward add.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm">
@@ -280,23 +538,13 @@ export default function InventoryPage() {
                 <p>
                   Succeeded {uploadResult.rowsSucceeded} · Failed {uploadResult.rowsFailed}
                 </p>
-                {uploadResult.errors?.length > 0 && (
-                  <ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-red-700">
-                    {uploadResult.errors.map((err, i) => (
-                      <li key={i}>
-                        Row {err.row}
-                        {err.sku ? ` (${err.sku})` : ""}: {err.error}
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
             )}
           </CardContent>
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -304,115 +552,140 @@ export default function InventoryPage() {
                 <Warehouse className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{kgStock.length}</p>
-                <p className="text-sm text-muted-foreground">Kg products</p>
+                <p className="text-2xl font-bold">{grandTotalCases.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Grand total cases</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
-                <Warehouse className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{ltrStock.length}</p>
-                <p className="text-sm text-muted-foreground">Ltr products</p>
-              </div>
-            </div>
+            <p className="text-2xl font-bold">{kgStock.length}</p>
+            <p className="text-sm text-muted-foreground">Kg / powder SKUs</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-red-600">{lowStockCount}</p>
-                <p className="text-sm text-muted-foreground">Low Stock Items</p>
-              </div>
-            </div>
+            <p className="text-2xl font-bold">{ltrStock.length}</p>
+            <p className="text-sm text-muted-foreground">Litre / liquid SKUs</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-2xl font-bold text-amber-700">{lowStockCount}</p>
+            <p className="text-sm text-muted-foreground">Low / zero stock</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="relative max-w-sm">
+      <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search products..."
+          className="pl-9"
+          placeholder="Search product or code…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
         />
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
-        </div>
-      ) : (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle>Kg stock</CardTitle>
-              <CardDescription>Powder and granule products (Kg / Gm packing)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <StockTable items={kgStock} canEdit={canEdit} savingId={savingId} onSave={saveStock} />
-            </CardContent>
-          </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Kg / powder stock</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StockTable
+            items={kgStock}
+            canEdit={canEdit}
+            savingId={savingId}
+            onSave={saveStock}
+            onSelectProduct={(id) => {
+              setHistoryProductId(id);
+              void loadMovements(id);
+            }}
+          />
+        </CardContent>
+      </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Ltr stock</CardTitle>
-              <CardDescription>Liquid products (Litre / ml packing)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <StockTable items={ltrStock} canEdit={canEdit} savingId={savingId} onSave={saveStock} />
-            </CardContent>
-          </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Litre / liquid stock</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StockTable
+            items={ltrStock}
+            canEdit={canEdit}
+            savingId={savingId}
+            onSave={saveStock}
+            onSelectProduct={(id) => {
+              setHistoryProductId(id);
+              void loadMovements(id);
+            }}
+          />
+        </CardContent>
+      </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Inventory ledger</CardTitle>
-              <CardDescription>Invoice deductions, reversals, uploads, and manual edits</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>When</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead>Ref</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {movements.slice(0, 40).map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell className="text-xs">{m.createdAt ? new Date(m.createdAt).toLocaleString("en-IN") : "—"}</TableCell>
-                      <TableCell>{m.sku || m.productName}</TableCell>
-                      <TableCell>{m.type}</TableCell>
-                      <TableCell className="text-right tabular-nums">{m.quantity}</TableCell>
-                      <TableCell className="text-xs">{m.invoiceNumber || m.notes || "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                  {movements.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
-                        No movements yet
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </>
-      )}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <div>
+            <CardTitle>Stock movement history</CardTitle>
+            <CardDescription>OPENING · INWARD · INVOICE · INVOICE_CANCEL · ADJUSTMENT</CardDescription>
+          </div>
+          <Select
+            value={historyProductId}
+            onValueChange={(v) => {
+              setHistoryProductId(v);
+              void loadMovements(v);
+            }}
+          >
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="All products" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              <SelectItem value="all">All products</SelectItem>
+              {inventory.map((item) => (
+                <SelectItem key={item.id} value={item.productId || item.id}>
+                  {item.product.productCode}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>When</TableHead>
+                <TableHead>SKU</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-right">Qty change</TableHead>
+                <TableHead>Ref</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {movements.slice(0, 60).map((m) => (
+                <TableRow key={m.id || `${m.sku}-${m.createdAt}`}>
+                  <TableCell className="text-sm">
+                    {m.createdAt ? new Date(m.createdAt).toLocaleString("en-IN") : "—"}
+                  </TableCell>
+                  <TableCell>{m.sku || "—"}</TableCell>
+                  <TableCell>{m.type}</TableCell>
+                  <TableCell className="text-right font-medium">{m.quantity}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {m.invoiceNumber || m.notes || m.referenceId || "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {movements.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    No movements yet
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

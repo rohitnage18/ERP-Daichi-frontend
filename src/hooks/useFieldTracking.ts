@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
-const INTERVAL_MS = 3 * 60 * 1000;
+const INTERVAL_MS = 30 * 60 * 1000;
 
 export function useFieldTracking(enabled: boolean) {
   const [lastError, setLastError] = useState<string | null>(null);

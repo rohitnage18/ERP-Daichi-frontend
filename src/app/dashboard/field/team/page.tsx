@@ -50,6 +50,20 @@ export default function TeamFieldPage() {
       .finally(() => setLoading(false));
   }, [date, userId]);
 
+  const approveReport = async (id: string, section: "activity" | "closing") => {
+    const res = await apiFetch(`/api/daily-reports/${id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ section, status: "APPROVED" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(data.error || "Could not approve");
+      return;
+    }
+    setReports((prev) => prev.map((r) => (r.id === id ? { ...r, ...data } : r)));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -102,16 +116,43 @@ export default function TeamFieldPage() {
             </CardHeader>
             <CardContent className="space-y-3 max-h-80 overflow-y-auto">
               {reports.map((rep) => (
-                <div key={rep.id} className="rounded-lg border p-3 text-sm">
+                <div key={rep.id} className="rounded-lg border p-3 text-sm space-y-2">
                   <p className="font-medium">{rep.salespersonName}</p>
                   <p className="text-muted-foreground">{formatDate(rep.reportDate)}</p>
+                  {(rep.darId || rep.dcrId) && (
+                    <p className="text-xs font-mono text-muted-foreground">
+                      {rep.darId || "—"} · {rep.dcrId || "—"}
+                    </p>
+                  )}
                   <p>
                     Sales {formatCurrency(rep.salesTarget || 0)} →{" "}
                     {rep.salesAchievement == null ? "—" : formatCurrency(rep.salesAchievement)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {rep.hasActivity ? "Activity in" : "Missing activity"} · {rep.hasClosing ? "Closed" : "No closing"}
+                    {rep.activityApproval?.status ? ` · DAR ${rep.activityApproval.status}` : ""}
+                    {rep.closingApproval?.status ? ` · DCR ${rep.closingApproval.status}` : ""}
                   </p>
+                  <div className="flex flex-wrap gap-2">
+                    {rep.hasActivity && rep.activityApproval?.status !== "APPROVED" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void approveReport(rep.id, "activity")}
+                      >
+                        Approve DAR
+                      </Button>
+                    )}
+                    {rep.hasClosing && rep.closingApproval?.status !== "APPROVED" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void approveReport(rep.id, "closing")}
+                      >
+                        Approve DCR
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
               {reports.length === 0 && <p className="text-muted-foreground text-sm">No reports</p>}

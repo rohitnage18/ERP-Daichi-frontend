@@ -55,7 +55,7 @@ export function TrackingBanner() {
           <p className="font-medium">{active ? "Location tracking is on" : "Location tracking is off"}</p>
           <p className="text-xs opacity-80">
             {active
-              ? "Your position is shared with managers during working hours (9:00–20:00 IST), every 3 minutes."
+              ? "Your position is shared with managers during working hours (9:00–20:00 IST), about every 30 minutes. Managers are alerted if there is no ping for 2+ hours."
               : "Tracking stays off until you opt in. It never runs in the background without this switch."}
           </p>
           {lastPingAt && active && (

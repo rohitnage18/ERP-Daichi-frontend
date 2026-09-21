@@ -67,7 +67,7 @@ export default function FieldTrackingPage() {
   const livePoints = live.map((p) => ({
     lat: p.latitude,
     lng: p.longitude,
-    label: `${p.userName || "Sales"} ${p.anomaly ? "(no ping 15+ min)" : ""}`,
+    label: `${p.userName || "Sales"} ${p.anomaly ? "(no ping 2+ hrs)" : ""}`,
     color: p.anomaly ? "#b91c1c" : "#047857",
   }));
 
@@ -101,7 +101,7 @@ export default function FieldTrackingPage() {
                 <div key={p.userId} className="flex items-center justify-between rounded border px-3 py-2">
                   <span>{p.userName}</span>
                   <span className={p.anomaly ? "text-red-600" : "text-emerald-700"}>
-                    {p.anomaly ? "No ping 15+ min" : "Active"}
+                    {p.anomaly ? "No ping 2+ hrs" : "Active"}
                   </span>
                 </div>
               ))}
