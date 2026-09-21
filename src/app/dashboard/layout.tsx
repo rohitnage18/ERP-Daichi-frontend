@@ -10,6 +10,7 @@ import { NavProvider } from "@/components/layout/NavContext";
 import { Loader2 } from "lucide-react";
 import { isPathBlockedForRole } from "@/lib/permissions";
 import { startApiKeepAlive } from "@/lib/keepalive";
+import { TrackingBanner } from "@/components/field/TrackingBanner";
 
 export default function DashboardLayout({
   children,
@@ -69,6 +70,7 @@ export default function DashboardLayout({
           <main className="app-main flex-1 overflow-y-auto bg-gradient-to-b from-background to-muted/30 print:overflow-visible print:bg-white print:p-0">
             <div className="p-3 sm:p-4 md:p-6 print:p-0">
               <HeaderBackButton />
+              {session.user?.role === "SALES_MARKETING" ? <TrackingBanner /> : null}
               {children}
             </div>
           </main>

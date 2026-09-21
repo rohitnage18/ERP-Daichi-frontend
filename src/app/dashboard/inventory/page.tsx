@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Warehouse, AlertTriangle, Loader2 } from "lucide-react";
+import { Search, Warehouse, AlertTriangle, Loader2, Upload } from "lucide-react";
 
 interface InventoryItem {
   id: string;
@@ -147,9 +147,21 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<{
+    rowsSucceeded: number;
+    rowsFailed: number;
+    errors: { row: number; sku?: string; error: string }[];
+  } | null>(null);
+  const [movements, setMovements] = useState<any[]>([]);
+  const canUpload = canEdit;
 
   useEffect(() => {
     fetchInventory();
+    apiFetch("/api/inventory/movements")
+      .then((r) => r.json())
+      .then((d) => setMovements(Array.isArray(d) ? d : []))
+      .catch(() => setMovements([]));
   }, []);
 
   const fetchInventory = async () => {
@@ -170,6 +182,38 @@ export default function InventoryPage() {
       item.product.name.toLowerCase().includes(search.toLowerCase()) ||
       item.product.productCode.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    setUploadResult(null);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const fileBase64 = dataUrl.split(",")[1] || "";
+      const res = await apiFetch("/api/inventory/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileBase64 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Upload failed");
+        return;
+      }
+      setUploadResult(data);
+      await fetchInventory();
+      const ledger = await apiFetch("/api/inventory/movements");
+      setMovements(await ledger.json());
+    } catch {
+      alert("Could not read file");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const saveStock = async (item: InventoryItem, quantity: number) => {
     const targetId = item.productId || item.id;
@@ -208,6 +252,49 @@ export default function InventoryPage() {
         <h1 className="text-3xl font-bold">Inventory</h1>
         <p className="text-muted-foreground">Monitor stock levels by packing — Kg and Litre separately</p>
       </div>
+
+      {canUpload && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Bulk upload</CardTitle>
+            <CardDescription>CSV or Excel with columns SKU (or Product Code) and Quantity. Valid rows update stock; bad rows are reported.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm">
+              <Upload className="h-4 w-4" />
+              {uploading ? "Uploading…" : "Choose file"}
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                className="hidden"
+                disabled={uploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleUpload(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {uploadResult && (
+              <div className="text-sm">
+                <p>
+                  Succeeded {uploadResult.rowsSucceeded} · Failed {uploadResult.rowsFailed}
+                </p>
+                {uploadResult.errors?.length > 0 && (
+                  <ul className="mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-red-700">
+                    {uploadResult.errors.map((err, i) => (
+                      <li key={i}>
+                        Row {err.row}
+                        {err.sku ? ` (${err.sku})` : ""}: {err.error}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -284,6 +371,44 @@ export default function InventoryPage() {
             </CardHeader>
             <CardContent>
               <StockTable items={ltrStock} canEdit={canEdit} savingId={savingId} onSave={saveStock} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Inventory ledger</CardTitle>
+              <CardDescription>Invoice deductions, reversals, uploads, and manual edits</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead>Ref</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {movements.slice(0, 40).map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="text-xs">{m.createdAt ? new Date(m.createdAt).toLocaleString("en-IN") : "—"}</TableCell>
+                      <TableCell>{m.sku || m.productName}</TableCell>
+                      <TableCell>{m.type}</TableCell>
+                      <TableCell className="text-right tabular-nums">{m.quantity}</TableCell>
+                      <TableCell className="text-xs">{m.invoiceNumber || m.notes || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                  {movements.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                        No movements yet
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </>

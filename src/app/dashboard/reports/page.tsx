@@ -46,8 +46,15 @@ const reports = [
     color: "bg-green-100 text-green-600",
   },
   {
+    title: "Daily sales reports",
+    description: "Plan vs actual, missing reports, CSV export",
+    icon: MapPinned,
+    href: "/dashboard/reports/field",
+    color: "bg-teal-100 text-teal-700",
+  },
+  {
     title: "Team field activity",
-    description: "Daily logs, visits, GPS, allowances",
+    description: "Daily reports, visits, GPS tracking",
     icon: MapPinned,
     href: "/dashboard/field/team",
     color: "bg-emerald-100 text-emerald-600",

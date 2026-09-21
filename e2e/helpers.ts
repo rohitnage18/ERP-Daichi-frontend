@@ -16,6 +16,9 @@ export const ROLES = [
     extraPages: [
       "/dashboard/field/history",
       "/dashboard/field/daily-log",
+      "/dashboard/field/activity",
+      "/dashboard/field/closing",
+      "/dashboard/field/tracking",
       "/dashboard/field/visits/new",
       "/dashboard/dealers/new",
       "/dashboard/orders/new",
@@ -35,6 +38,9 @@ export const ROLES = [
     email: "admin@xenvolt.com",
     extraPages: [
       "/dashboard/field/history",
+      "/dashboard/field/tracking",
+      "/dashboard/inventory",
+      "/dashboard/reports/field",
       "/dashboard/products/new",
       "/dashboard/reports/sales",
       "/dashboard/reports/aging",
@@ -47,7 +53,6 @@ export const ROLES = [
     blocked: [
       "/dashboard/billing",
       "/dashboard/logistics",
-      "/dashboard/inventory",
       "/dashboard/finance/invoices",
       "/dashboard/recommendations",
     ],

@@ -61,9 +61,27 @@ export default function InvoiceDetailPage() {
       const res = await apiFetch(`/api/invoices/${params.id}/finalize`, { method: "POST" });
       if (res.ok) {
         setInvoice(await res.json());
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Could not finalize invoice. Check stock.");
       }
     } catch (error) {
       console.error("Error finalizing invoice:", error);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!confirm("Cancel this invoice and restore deducted stock?")) return;
+    try {
+      const res = await apiFetch(`/api/invoices/${params.id}/cancel`, { method: "POST" });
+      if (res.ok) {
+        setInvoice(await res.json());
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Could not cancel invoice.");
+      }
+    } catch (error) {
+      console.error("Error cancelling invoice:", error);
     }
   };
 
@@ -129,6 +147,11 @@ export default function InvoiceDetailPage() {
             <Button variant="outline" onClick={handleFinalize}>
               <CheckCircle className="mr-2 h-4 w-4" />
               Finalize
+            </Button>
+          )}
+          {canManage && invoice.status !== "CANCELLED" && (
+            <Button variant="outline" onClick={handleCancel}>
+              Cancel invoice
             </Button>
           )}
           {canManage && (

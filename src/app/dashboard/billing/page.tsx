@@ -1042,12 +1042,6 @@ export default function BillingPage() {
                     <span className="tabular-nums">{totals.roundOff.toFixed(2)}</span>
                   </div>
                 )}
-                {totals.freightCharges > 0 && (
-                  <p className="text-right text-xs text-muted-foreground">
-                    {formatCurrency(totals.goodsTotal)} − {formatCurrency(totals.freightCharges)} ={" "}
-                    {formatCurrency(totals.grandTotal)}
-                  </p>
-                )}
                 <div className="border-t pt-2">
                   <div className="flex justify-between text-lg font-bold">
                     <span>Grand Total</span>

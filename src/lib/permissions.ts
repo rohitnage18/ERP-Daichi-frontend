@@ -77,7 +77,6 @@ export const roleBlockedPrefixes: Record<string, string[]> = {
     "/dashboard/recommendations",
     "/dashboard/billing",
     "/dashboard/logistics",
-    "/dashboard/inventory",
     // finance module is for Account/Logistics; admin uses Approvals + Reports
     "/dashboard/finance",
   ],

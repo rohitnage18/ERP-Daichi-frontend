@@ -3,15 +3,29 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, NotebookPen, Wallet, ClipboardCheck, Users } from "lucide-react";
+import { MapPin, NotebookPen, ClipboardCheck, Users, ClipboardList, Sunset, Radio } from "lucide-react";
 
 const actions = [
   {
+    title: "Daily Activity Report",
+    description: "Start-of-day plan: places, targets, demos",
+    href: "/dashboard/field/activity",
+    icon: ClipboardList,
+    color: "bg-blue-50 text-blue-700 border-blue-100",
+  },
+  {
+    title: "Daily Closing Report",
+    description: "End-of-day actuals vs today's plan",
+    href: "/dashboard/field/closing",
+    icon: Sunset,
+    color: "bg-orange-50 text-orange-700 border-orange-100",
+  },
+  {
     title: "Daily work log",
-    description: "Record today's visits, travel, and summary",
+    description: "Optional visit/travel notes",
     href: "/dashboard/field/daily-log",
     icon: NotebookPen,
-    color: "bg-blue-50 text-blue-700 border-blue-100",
+    color: "bg-slate-50 text-slate-700 border-slate-200",
   },
   {
     title: "Dealer visit",
@@ -21,15 +35,15 @@ const actions = [
     color: "bg-emerald-50 text-emerald-700 border-emerald-100",
   },
   {
-    title: "Allowance claim",
-    description: "Submit travel or daily allowance",
-    href: "/dashboard/field/allowances/new",
-    icon: Wallet,
-    color: "bg-amber-50 text-amber-700 border-amber-100",
+    title: "My tracking",
+    description: "Opt in and view today's GPS trail",
+    href: "/dashboard/field/tracking",
+    icon: Radio,
+    color: "bg-violet-50 text-violet-700 border-violet-100",
   },
   {
     title: "My history",
-    description: "View past logs, visits, and claims",
+    description: "Past plans, closings, visits, and GPS",
     href: "/dashboard/field/history",
     icon: ClipboardCheck,
     color: "bg-slate-50 text-slate-700 border-slate-200",
@@ -38,7 +52,7 @@ const actions = [
 
 const teamAction = {
   title: "Team field activity",
-  description: "Daily logs, visits, GPS, allowances for the sales team",
+  description: "Daily reports, visits, and live tracking",
   href: "/dashboard/field/team",
   icon: Users,
   color: "bg-emerald-50 text-emerald-700 border-emerald-100",

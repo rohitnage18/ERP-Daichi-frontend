@@ -7,6 +7,9 @@ const pages = [
   "/dashboard/field",
   "/dashboard/field/team",
   "/dashboard/field/daily-log",
+  "/dashboard/field/activity",
+  "/dashboard/field/closing",
+  "/dashboard/field/tracking",
   "/dashboard/field/history",
   "/dashboard/field/visits/new",
   "/dashboard/field/allowances/new",
@@ -35,6 +38,7 @@ const pages = [
   "/dashboard/finance/debit-notes",
   "/dashboard/finance/debit-notes/new",
   "/dashboard/reports",
+  "/dashboard/reports/field",
   "/dashboard/reports/dealers",
   "/dashboard/reports/products",
   "/dashboard/reports/sales",
@@ -62,13 +66,14 @@ const sidebar = [
   { href: "/dashboard/billing", roles: ["ACCOUNT"] },
   { href: "/dashboard/recommendations", roles: ["SALES_MARKETING"] },
   { href: "/dashboard/logistics", roles: ["PRODUCTION_LOGISTICS"] },
-  { href: "/dashboard/inventory", roles: ["PRODUCTION_LOGISTICS"] },
+  { href: "/dashboard/inventory", roles: ["PRODUCTION_LOGISTICS", "MANAGEMENT_ADMIN"] },
   { href: "/dashboard/finance/invoices", roles: ["PRODUCTION_LOGISTICS", "ACCOUNT"] },
   { href: "/dashboard/finance/payments", roles: ["ACCOUNT"] },
   { href: "/dashboard/finance/credit-notes", roles: ["ACCOUNT"] },
   { href: "/dashboard/finance/debit-notes", roles: ["ACCOUNT"] },
   { href: "/dashboard/billing/export", roles: ["ACCOUNT"] },
   { href: "/dashboard/reports", roles: ["MANAGEMENT_ADMIN"] },
+  { href: "/dashboard/field/tracking", roles: ["MANAGEMENT_ADMIN"] },
   { href: "/dashboard/approvals", roles: ["MANAGEMENT_ADMIN"] },
   { href: "/dashboard/settings/email", roles: ["MANAGEMENT_ADMIN"] },
   { href: "/dashboard/settings", roles: ["MANAGEMENT_ADMIN"] },
@@ -92,6 +97,7 @@ const quickActions: Record<string, string[]> = {
     "/dashboard/settings",
     "/dashboard/products",
     "/dashboard/reports/sales",
+    "/dashboard/inventory",
   ],
   PRODUCTION_LOGISTICS: [
     "/dashboard/logistics",
@@ -149,6 +155,15 @@ describe("role route guards", () => {
         assert.equal(isPathBlockedForRole(item.href, role), false, `${role} blocked from ${item.href}`);
       }
     }
+  });
+
+  it("lets sales open activity/closing/tracking and admin open inventory", () => {
+    assert.equal(isPathBlockedForRole("/dashboard/field/activity", "SALES_MARKETING"), false);
+    assert.equal(isPathBlockedForRole("/dashboard/field/closing", "SALES_MARKETING"), false);
+    assert.equal(isPathBlockedForRole("/dashboard/field/tracking", "SALES_MARKETING"), false);
+    assert.equal(isPathBlockedForRole("/dashboard/inventory", "MANAGEMENT_ADMIN"), false);
+    assert.equal(isPathBlockedForRole("/dashboard/reports/field", "MANAGEMENT_ADMIN"), false);
+    assert.equal(isPathBlockedForRole("/dashboard/reports/field", "SALES_MARKETING"), true);
   });
 
   it("lets each role open its dashboard quick-action links", () => {
