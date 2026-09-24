@@ -5,6 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Case-insensitive search that tolerates null fields. */
+export function includesQuery(value: unknown, query: string): boolean {
+  const q = String(query ?? "").toLowerCase();
+  if (!q) return true;
+  return String(value ?? "").toLowerCase().includes(q);
+}
+
 type DateInput =
   | Date
   | string

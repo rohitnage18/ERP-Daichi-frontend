@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Leaf, Eye } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, includesQuery } from "@/lib/utils";
 
 interface Recommendation {
   id: string;
@@ -72,9 +72,9 @@ export default function RecommendationsPage() {
 
   const filteredRecommendations = recommendations.filter(
     (rec) =>
-      rec.farmerName.toLowerCase().includes(search.toLowerCase()) ||
-      rec.cropType.toLowerCase().includes(search.toLowerCase()) ||
-      rec.districtName.toLowerCase().includes(search.toLowerCase())
+      includesQuery(rec?.farmerName, search) ||
+      includesQuery(rec?.cropType, search) ||
+      includesQuery(rec?.districtName, search)
   );
 
   return (

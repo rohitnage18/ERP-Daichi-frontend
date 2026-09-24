@@ -50,13 +50,14 @@ const navigation = [
   { name: "Settings", href: "/dashboard/settings", icon: Settings, roles: ["MANAGEMENT_ADMIN"] },
 ];
 
-function pathMatches(pathname: string, href: string) {
+function pathMatches(pathname: string | null, href: string) {
+  if (!pathname) return false;
   if (href === "/dashboard") return pathname === "/dashboard";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 /** Highlight only the most specific nav item so parent + child are not both selected. */
-function isNavItemActive(pathname: string, href: string, allHrefs: string[]) {
+function isNavItemActive(pathname: string | null, href: string, allHrefs: string[]) {
   if (!pathMatches(pathname, href)) return false;
   return !allHrefs.some((other) => other !== href && other.startsWith(`${href}/`) && pathMatches(pathname, other));
 }

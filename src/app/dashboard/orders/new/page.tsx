@@ -30,7 +30,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Loader2, Plus, Trash2, Send, Save, Check, ChevronsUpDown, Search } from "lucide-react";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, includesQuery } from "@/lib/utils";
 import { matchesProductSearch } from "@/lib/product-search";
 import {
   billedUnitsFromCases,
@@ -249,9 +249,9 @@ export default function NewOrderPage() {
     const search = dealerSearch.toLowerCase();
     return dealers.filter(
       (d) =>
-        d.firmName?.toLowerCase().includes(search) ||
-        d.dealerCode?.toLowerCase().includes(search) ||
-        d.businessAddress?.toLowerCase().includes(search)
+        includesQuery(d?.firmName, search) ||
+        includesQuery(d?.dealerCode, search) ||
+        includesQuery(d?.businessAddress, search)
     );
   }, [dealers, dealerSearch]);
 

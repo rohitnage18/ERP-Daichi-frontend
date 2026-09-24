@@ -17,7 +17,7 @@ import {
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Receipt } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, includesQuery } from "@/lib/utils";
 
 interface CreditNote {
   id: string;
@@ -66,8 +66,8 @@ export default function CreditNotesPage() {
 
   const filteredCreditNotes = creditNotes.filter(
     (cn) =>
-      cn.creditNoteNumber.toLowerCase().includes(search.toLowerCase()) ||
-      cn.dealer.firmName.toLowerCase().includes(search.toLowerCase())
+      includesQuery(cn?.creditNoteNumber, search) ||
+      includesQuery(cn?.dealer?.firmName, search)
   );
 
   return (

@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, CreditCard, Loader2 } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, includesQuery } from "@/lib/utils";
 
 interface Payment {
   id: string;
@@ -203,9 +203,9 @@ export default function PaymentsPage() {
 
   const filteredPayments = payments.filter(
     (payment) =>
-      payment.dealer.firmName.toLowerCase().includes(search.toLowerCase()) ||
-      payment.referenceNumber?.toLowerCase().includes(search.toLowerCase()) ||
-      payment.dealer.dealerCode?.toLowerCase().includes(search.toLowerCase())
+      includesQuery(payment?.dealer?.firmName, search) ||
+      includesQuery(payment?.referenceNumber, search) ||
+      includesQuery(payment?.dealer?.dealerCode, search)
   );
 
   const totalCollected = payments.reduce((sum, p) => sum + p.netAmount, 0);

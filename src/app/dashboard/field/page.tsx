@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, NotebookPen, ClipboardCheck, Users, ClipboardList, Sunset, Radio } from "lucide-react";
+import { TrackingBanner } from "@/components/field/TrackingBanner";
 
 const actions = [
   {
@@ -71,6 +72,8 @@ export default function FieldHubPage() {
           Hello {session?.user?.name?.split(" ")[0] || "there"} — tap what you need today
         </p>
       </div>
+
+      <TrackingBanner />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {items.map((item) => (

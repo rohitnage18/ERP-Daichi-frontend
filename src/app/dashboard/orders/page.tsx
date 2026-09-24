@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Plus, Search, Eye, RefreshCw, Loader2, Truck } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, includesQuery } from "@/lib/utils";
 import { canCreateOrder, canCreateDispatch } from "@/lib/permissions";
 
 interface Order {
@@ -79,13 +79,12 @@ export default function OrdersPage() {
   };
 
   const filteredOrders = orders.filter((order) => {
-    const dealerName = order.dealer?.firmName || '';
     const matchesSearch =
-      order.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
-      dealerName.toLowerCase().includes(search.toLowerCase());
-    
+      includesQuery(order?.orderNumber, search) ||
+      includesQuery(order?.dealer?.firmName, search);
+
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 

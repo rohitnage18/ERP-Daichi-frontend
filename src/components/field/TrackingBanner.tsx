@@ -1,18 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { useFieldTracking } from "@/hooks/useFieldTracking";
 import { MapPin } from "lucide-react";
 
+/**
+ * Keeps GPS pings alive after opt-in across the dashboard, but only shows the
+ * start/stop control on the Field work hub (/dashboard/field).
+ */
 export function TrackingBanner() {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const role = session?.user?.role;
   const [active, setActive] = useState(false);
   const [loading, setLoading] = useState(false);
   const { lastError, lastPingAt } = useFieldTracking(active);
+
+  const showControls = pathname === "/dashboard/field";
 
   useEffect(() => {
     if (role !== "SALES_MARKETING") return;
@@ -42,6 +50,8 @@ export function TrackingBanner() {
       setLoading(false);
     }
   };
+
+  if (!showControls) return null;
 
   return (
     <div

@@ -27,7 +27,7 @@ import { GradeBadge } from "@/components/shared/GradeBadge";
 import { gradeFromCreditLimit } from "@/lib/dealer-grade";
 import { Search, Eye, RefreshCw, Loader2, Plus } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { formatDate } from "@/lib/utils";
+import { formatDate, includesQuery } from "@/lib/utils";
 import { canCreateDealer, canSyncDealers } from "@/lib/permissions";
 
 interface DaichiDealer {
@@ -155,10 +155,10 @@ export default function DealersPage() {
 
   const filteredDealers = dealers.filter((dealer) => {
     const matchesSearch =
-      dealer.firmName.toLowerCase().includes(search.toLowerCase()) ||
-      (dealer.email || "").toLowerCase().includes(search.toLowerCase()) ||
-      (dealer.mobileNumber || "").toLowerCase().includes(search.toLowerCase()) ||
-      dealer.externalId.toLowerCase().includes(search.toLowerCase());
+      includesQuery(dealer?.firmName, search) ||
+      includesQuery(dealer?.email, search) ||
+      includesQuery(dealer?.mobileNumber, search) ||
+      includesQuery(dealer?.externalId, search);
 
     const matchesStatus = statusFilter === "all" || dealer.syncStatus === statusFilter;
 

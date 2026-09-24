@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api";
+import { includesQuery } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -54,9 +55,11 @@ interface InventoryItem {
 }
 
 function isLiquidProduct(item: InventoryItem): boolean {
-  if (item.product.packingType === "LIQUID") return true;
-  if (item.product.packingType === "POWDER_GRANULES") return false;
-  const blob = [item.product.packingSize, item.product.packingUnit, item.product.unitOfMeasure]
+  const product = item.product;
+  if (!product) return false;
+  if (product.packingType === "LIQUID") return true;
+  if (product.packingType === "POWDER_GRANULES") return false;
+  const blob = [product.packingSize, product.packingUnit, product.unitOfMeasure]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -103,9 +106,9 @@ function StockTable({
           const isLow = item.lowStock ?? item.quantity <= item.reorderLevel;
           const isZero = item.zeroStock ?? item.quantity <= 0;
           const draft = drafts[item.id] ?? String(item.quantity);
-          const upc = item.unitsPerCase || item.product.unitsPerAlternate || 1;
+          const upc = item.unitsPerCase || item.product?.unitsPerAlternate || 1;
           const cases = item.displayCases ?? Math.floor(item.quantity / upc + 0.5);
-          const base = item.baseUnit || (item.product.unitOfMeasure?.toLowerCase() === "kg" ? "KG" : "Nos");
+          const base = item.baseUnit || (item.product?.unitOfMeasure?.toLowerCase() === "kg" ? "KG" : "Nos");
           const reserved = item.reservedQuantity ?? 0;
           const available = item.availableQuantity ?? Math.max(0, item.quantity - reserved);
           return (
@@ -114,9 +117,9 @@ function StockTable({
               className="cursor-pointer"
               onClick={() => onSelectProduct(item.productId || item.id)}
             >
-              <TableCell className="font-medium">{item.product.productCode}</TableCell>
-              <TableCell>{item.product.name}</TableCell>
-              <TableCell className="text-sm">{item.product.packingSize || "—"}</TableCell>
+              <TableCell className="font-medium">{item.product?.productCode || "—"}</TableCell>
+              <TableCell>{item.product?.name || "Unknown"}</TableCell>
+              <TableCell className="text-sm">{item.product?.packingSize || "—"}</TableCell>
               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 {canEdit ? (
                   <div className="flex items-center justify-end gap-2">
@@ -230,10 +233,8 @@ export default function InventoryPage() {
     }
   };
 
-  const filteredInventory = inventory.filter(
-    (item) =>
-      item.product.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.product.productCode.toLowerCase().includes(search.toLowerCase())
+  const filteredInventory = inventory.filter((item) =>
+    includesQuery(item?.product?.name, search) || includesQuery(item?.product?.productCode, search)
   );
 
   const handleUpload = async (file: File) => {
@@ -399,7 +400,7 @@ export default function InventoryPage() {
                   <SelectContent className="max-h-72">
                     {inventory.map((item) => (
                       <SelectItem key={item.id} value={item.productId || item.id}>
-                        {item.product.productCode} — {item.product.name}
+                        {item.product?.productCode || "—"} — {item.product?.name || "Unknown"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -469,7 +470,7 @@ export default function InventoryPage() {
                   <SelectContent className="max-h-72">
                     {inventory.map((item) => (
                       <SelectItem key={`xfer-${item.id}`} value={item.productId || item.id}>
-                        {item.product.productCode} — {item.warehouseCode || "MAIN"} (
+                        {item.product?.productCode || "—"} — {item.warehouseCode || "MAIN"} (
                         {(item.availableQuantity ?? item.quantity).toLocaleString()} avail)
                       </SelectItem>
                     ))}
@@ -644,7 +645,7 @@ export default function InventoryPage() {
               <SelectItem value="all">All products</SelectItem>
               {inventory.map((item) => (
                 <SelectItem key={item.id} value={item.productId || item.id}>
-                  {item.product.productCode}
+                  {item.product?.productCode || "—"}
                 </SelectItem>
               ))}
             </SelectContent>

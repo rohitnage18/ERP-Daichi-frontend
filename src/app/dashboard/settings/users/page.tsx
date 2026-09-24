@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api";
+import { includesQuery } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -50,9 +51,9 @@ export default function UsersPage() {
 
   const filteredUsers = users.filter(
     (user) =>
-      user.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      user.email.toLowerCase().includes(search.toLowerCase()) ||
-      user.employeeId.toLowerCase().includes(search.toLowerCase())
+      includesQuery(user?.fullName, search) ||
+      includesQuery(user?.email, search) ||
+      includesQuery(user?.employeeId, search)
   );
 
   return (

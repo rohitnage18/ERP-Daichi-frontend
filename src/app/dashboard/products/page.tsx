@@ -95,7 +95,7 @@ export default function ProductsPage() {
   };
 
   const filteredProducts = useMemo(
-    () => products.filter((product) => matchesProductSearch(product, search)),
+    () => products.filter((product) => product && matchesProductSearch(product, search)),
     [products, search]
   );
 

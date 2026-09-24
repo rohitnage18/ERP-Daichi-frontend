@@ -19,7 +19,7 @@ import {
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Receipt } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, includesQuery } from "@/lib/utils";
 
 interface DebitNote {
   id: string;
@@ -66,8 +66,8 @@ export default function DebitNotesPage() {
 
   const filtered = debitNotes.filter(
     (dn) =>
-      dn.debitNoteNumber.toLowerCase().includes(search.toLowerCase()) ||
-      dn.dealer.firmName.toLowerCase().includes(search.toLowerCase())
+      includesQuery(dn?.debitNoteNumber, search) ||
+      includesQuery(dn?.dealer?.firmName, search)
   );
 
   return (

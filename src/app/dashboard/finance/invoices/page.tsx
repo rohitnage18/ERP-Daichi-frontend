@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Search, FileText, Printer } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, includesQuery } from "@/lib/utils";
 import Link from "next/link";
 
 interface Invoice {
@@ -70,11 +70,10 @@ export default function InvoicesPage() {
   };
 
   const filteredInvoices = invoices.filter((invoice) => {
-    const dealerName = invoice.dealerName || invoice.dealer?.firmName || '';
     const matchesSearch =
-      invoice.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
-      dealerName.toLowerCase().includes(search.toLowerCase());
-    
+      includesQuery(invoice?.invoiceNumber, search) ||
+      includesQuery(invoice?.dealerName || invoice?.dealer?.firmName, search);
+
     const matchesStatus = statusFilter === "all" || invoice.status === statusFilter;
     
     return matchesSearch && matchesStatus;

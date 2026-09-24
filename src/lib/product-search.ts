@@ -1,8 +1,8 @@
 /**
  * Loose product search: "15 30 15", "15:30:15", "5kg", "swsf012" all match.
  */
-export function compactText(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+export function compactText(value: unknown): string {
+  return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 export function productSearchHaystack(p: {
@@ -26,9 +26,10 @@ export function productSearchHaystack(p: {
 }
 
 export function matchesProductSearch(
-  product: Parameters<typeof productSearchHaystack>[0],
+  product: Parameters<typeof productSearchHaystack>[0] | null | undefined,
   query: string
 ): boolean {
+  if (!product) return false;
   const q = query.trim().toLowerCase();
   if (!q) return true;
   const hay = productSearchHaystack(product).toLowerCase();

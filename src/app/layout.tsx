@@ -14,8 +14,8 @@ export const metadata: Metadata = {
   title: "Daichi International — AgriFlow ERP",
   description: "Enterprise Resource Planning for Agricultural Distribution",
   icons: {
-    icon: "/branding/daichi-logo.png",
-    apple: "/branding/daichi-logo.png",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
   },
 };
 

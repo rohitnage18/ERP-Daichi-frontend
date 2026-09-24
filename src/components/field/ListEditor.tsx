@@ -15,8 +15,9 @@ export function ListEditor({
   onChange: (next: string[]) => void;
   placeholder?: string;
 }) {
+  const rows = Array.isArray(values) && values.length > 0 ? values : [""];
   const setAt = (index: number, value: string) => {
-    const next = [...values];
+    const next = [...rows];
     next[index] = value;
     onChange(next);
   };
@@ -24,7 +25,7 @@ export function ListEditor({
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium">{label}</p>
-      {values.map((value, index) => (
+      {rows.map((value, index) => (
         <div key={index} className="flex gap-2">
           <Input
             className="h-11 text-base"
@@ -37,14 +38,14 @@ export function ListEditor({
             variant="outline"
             size="icon"
             className="h-11 w-11 shrink-0"
-            onClick={() => onChange(values.filter((_, i) => i !== index))}
-            disabled={values.length <= 1}
+            onClick={() => onChange(rows.filter((_, i) => i !== index))}
+            disabled={rows.length <= 1}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       ))}
-      <Button type="button" variant="outline" className="h-11 w-full" onClick={() => onChange([...values, ""])}>
+      <Button type="button" variant="outline" className="h-11 w-full" onClick={() => onChange([...rows, ""])}>
         <Plus className="mr-2 h-4 w-4" />
         Add another
       </Button>

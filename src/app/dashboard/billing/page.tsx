@@ -37,7 +37,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { apiFetch } from "@/lib/api";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, includesQuery } from "@/lib/utils";
 import {
   billedUnitsFromCases,
   casesFromBilledUnits,
@@ -443,9 +443,9 @@ export default function BillingPage() {
     const search = dealerSearch.toLowerCase();
     return dealers.filter(
       (d) =>
-        d.firmName?.toLowerCase().includes(search) ||
-        d.city?.toLowerCase().includes(search) ||
-        (d.gstNumber || d.gstNo || "").toLowerCase().includes(search)
+        includesQuery(d?.firmName, search) ||
+        includesQuery(d?.city, search) ||
+        includesQuery(d?.gstNumber || d?.gstNo, search)
     );
   }, [dealers, dealerSearch]);
 
