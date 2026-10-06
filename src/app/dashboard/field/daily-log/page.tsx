@@ -28,7 +28,6 @@ export default function DailyLogPage() {
     collectionAmount: "",
     newDealersAppointed: "0",
     achievementNotes: "",
-    expensesSummary: "",
   });
 
   const distanceTraveled =
@@ -74,7 +73,6 @@ export default function DailyLogPage() {
           collectionAmount: form.collectionAmount ? parseFloat(form.collectionAmount) : null,
           newDealersAppointed: parseInt(form.newDealersAppointed, 10) || 0,
           achievementNotes: form.achievementNotes || null,
-          expensesSummary: form.expensesSummary || null,
           odometerPhoto,
           latitude: location?.lat,
           longitude: location?.lng,
@@ -185,10 +183,6 @@ export default function DailyLogPage() {
                 <Label htmlFor="achievementNotes">Achievements / highlights</Label>
                 <Textarea id="achievementNotes" rows={3} className="text-base" placeholder="Key achievements, closures, targets met..." value={form.achievementNotes} onChange={(e) => setForm({ ...form, achievementNotes: e.target.value })} />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="expenses">Expenses (notes)</Label>
-              <Input id="expenses" className="h-12 text-base" placeholder="Fuel, meals, etc." value={form.expensesSummary} onChange={(e) => setForm({ ...form, expensesSummary: e.target.value })} />
             </div>
             <Button type="submit" size="lg" className="h-14 w-full text-lg" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
