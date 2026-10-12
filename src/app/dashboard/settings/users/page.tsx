@@ -177,21 +177,38 @@ export default function UsersPage() {
     if (!editing || form.password) body.password = form.password;
 
     try {
-      const res = await apiFetch(editing ? `/api/users/${editing.id}` : "/api/users", {
+      let res = await apiFetch(editing ? `/api/users/${editing.id}` : "/api/users", {
         method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (!editing && res.status === 404) {
+        res = await apiFetch("/api/emails/invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName: body.fullName,
+            email: body.email,
+            phone: body.phone,
+            employeeId: body.employeeId,
+            role: body.role,
+            zoneId: body.zoneId,
+            zoneName: body.zoneName,
+            temporaryPassword: body.password,
+          }),
+        });
+      }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error || "Could not save this user");
         return;
       }
+      const saved = data.user || data;
       setOpen(false);
       setNotice(
         editing
-          ? `${data.fullName} updated. Their next login uses the ${roleLabels[data.role]?.label || data.role} role.`
-          : `${data.fullName} can sign in with ${data.email} and the password you set.`
+          ? `${saved.fullName} updated. Their next login uses the ${roleLabels[saved.role]?.label || saved.role} role.`
+          : `${saved.fullName} can sign in with ${saved.email} and the password you set.`
       );
       loadUsers();
     } catch {
