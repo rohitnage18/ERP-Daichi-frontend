@@ -53,15 +53,8 @@ const reports = [
     color: "bg-teal-100 text-teal-700",
   },
   {
-    title: "Team field activity",
-    description: "Daily reports, visits, GPS tracking",
-    icon: MapPinned,
-    href: "/dashboard/field/team",
-    color: "bg-emerald-100 text-emerald-600",
-  },
-  {
-    title: "Monthly email report",
-    description: "Send management summary by email",
+    title: "Email a report",
+    description: "Send any report to the founder",
     icon: Mail,
     href: "/dashboard/settings/email",
     color: "bg-indigo-100 text-indigo-600",

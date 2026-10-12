@@ -13,14 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { apiFetch } from "@/lib/api";
-import { Download, FileJson, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2 } from "lucide-react";
 
 export default function GSTNExportPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [status, setStatus] = useState("all");
   const [exportingExcel, setExportingExcel] = useState(false);
-  const [exportingJson, setExportingJson] = useState(false);
   const [exportingInvoices, setExportingInvoices] = useState(false);
 
   const buildQueryString = () => {
@@ -64,23 +63,6 @@ export default function GSTNExportPage() {
     }
   };
 
-  const handleExportGSTNJson = async () => {
-    setExportingJson(true);
-    try {
-      const qs = buildQueryString();
-      const today = new Date().toISOString().split("T")[0];
-      await downloadFile(
-        `/api/exports/gstn/json${qs ? `?${qs}` : ""}`,
-        `gstn-export-${today}.json`
-      );
-    } catch (error) {
-      console.error("Export failed:", error);
-      alert("Failed to export GSTN data");
-    } finally {
-      setExportingJson(false);
-    }
-  };
-
   const handleExportInvoicesExcel = async () => {
     setExportingInvoices(true);
     try {
@@ -103,7 +85,7 @@ export default function GSTNExportPage() {
       <div>
           <h1 className="text-2xl font-bold tracking-tight">GSTN Export</h1>
           <p className="text-muted-foreground">
-            Export invoices for GST filing in Excel and JSON formats
+            Export invoices for GST filing in Excel
           </p>
         </div>
 
@@ -217,7 +199,7 @@ export default function GSTNExportPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -251,46 +233,6 @@ export default function GSTNExportPage() {
                 <>
                   <Download className="mr-2 h-4 w-4" />
                   Download Excel
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-blue-100 p-2">
-                <FileJson className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">GSTN JSON</CardTitle>
-                <CardDescription>
-                  JSON format for API integration
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Export invoices in structured JSON format. 
-              Ideal for integration with accounting software and GST APIs.
-            </p>
-            <Button
-              className="w-full"
-              variant="outline"
-              onClick={handleExportGSTNJson}
-              disabled={exportingJson}
-            >
-              {exportingJson ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 h-4 w-4" />
-                  Download JSON
                 </>
               )}
             </Button>
@@ -343,25 +285,14 @@ export default function GSTNExportPage() {
           <CardTitle>Export Information</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 text-sm md:grid-cols-2">
-            <div>
-              <h4 className="font-medium mb-2">GSTN Excel Format Includes:</h4>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>B2B Invoice Summary (GSTR-1 format)</li>
-                <li>Line Item Details with HSN codes</li>
-                <li>HSN Summary for filing</li>
-                <li>CGST, SGST, IGST breakup</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium mb-2">GSTN JSON Format Includes:</h4>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Summary statistics</li>
-                <li>Complete invoice data</li>
-                <li>All line items with tax details</li>
-                <li>Ready for API integration</li>
-              </ul>
-            </div>
+          <div className="text-sm">
+            <h4 className="font-medium mb-2">GSTN Excel Format Includes:</h4>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+              <li>B2B Invoice Summary (GSTR-1 format)</li>
+              <li>Line Item Details with HSN codes</li>
+              <li>HSN Summary for filing</li>
+              <li>CGST, SGST, IGST breakup</li>
+            </ul>
           </div>
         </CardContent>
       </Card>

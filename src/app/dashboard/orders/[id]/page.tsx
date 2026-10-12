@@ -27,9 +27,9 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Truck, FileText, Loader2, Pencil, Save, X } from "lucide-react";
+import { Truck, FileText, Loader2, Pencil, Save, X, CheckCircle } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { canCreateDispatch, canGenerateInvoice, canViewInvoice } from "@/lib/permissions";
+import { canApprove, canCreateDispatch, canGenerateInvoice, canViewInvoice } from "@/lib/permissions";
 
 interface OrderDetail {
   id: string;
@@ -73,6 +73,7 @@ interface OrderDetail {
   createdBy?: { fullName: string };
   approvedByName?: string;
   approvedBy?: { fullName: string } | null;
+  stockWarning?: string;
   dispatch?: {
     dispatchNumber: string;
     status: string;
@@ -87,6 +88,7 @@ export default function OrderDetailPage() {
   const { data: session } = useSession();
   const role = session?.user?.role;
   const canEditOrder = role === "MANAGEMENT_ADMIN";
+  const showApprove = canApprove(role);
   const showGenerateInvoice = canGenerateInvoice(role);
   const showDispatch = canCreateDispatch(role);
   const showViewInvoice = canViewInvoice(role);
@@ -107,6 +109,11 @@ export default function OrderDetailPage() {
     driverName: "",
     driverContact: "",
   });
+  const [approving, setApproving] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejecting, setRejecting] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrder();
@@ -181,6 +188,62 @@ export default function OrderDetailPage() {
       setActionError("Network error. Try again.");
     } finally {
       setSavingEdit(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!order?.id) return;
+    setApproving(true);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      const res = await apiFetch(`/api/orders/${order.id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionError(typeof body.error === "string" ? body.error : "Could not approve this order.");
+        return;
+      }
+      if (typeof body.stockWarning === "string" && body.stockWarning) {
+        setActionMessage(`Approved. Stock was not reserved: ${body.stockWarning}`);
+      }
+      await fetchOrder();
+    } catch {
+      setActionError("Network error. Try again.");
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!order?.id) return;
+    if (!rejectReason.trim()) {
+      setActionError("Enter a reason for rejection.");
+      return;
+    }
+    setRejecting(true);
+    setActionError(null);
+    try {
+      const res = await apiFetch(`/api/orders/${order.id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: rejectReason.trim() }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionError(typeof body.error === "string" ? body.error : "Could not reject this order.");
+        return;
+      }
+      setRejectOpen(false);
+      setRejectReason("");
+      await fetchOrder();
+    } catch {
+      setActionError("Network error. Try again.");
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -280,6 +343,27 @@ export default function OrderDetailPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {showApprove && order.status === "PENDING_APPROVAL" && (
+            <>
+              <Button onClick={() => void handleApprove()} disabled={approving || rejecting}>
+                {approving ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                )}
+                Approve
+              </Button>
+              <Button
+                variant="outline"
+                className="text-red-700"
+                onClick={() => setRejectOpen(true)}
+                disabled={approving || rejecting}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Reject
+              </Button>
+            </>
+          )}
           {canEditOrder &&
             (order.status === "PENDING_APPROVAL" || order.status === "DRAFT") &&
             !editMode && (
@@ -415,9 +499,41 @@ export default function OrderDetailPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject order</DialogTitle>
+            <DialogDescription>This cancels {order.orderNumber}. The sales team will see the reason.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Reason</Label>
+            <Input value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Why is this order rejected?" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleReject()} disabled={rejecting}>
+              {rejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Reject order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {actionError && (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {actionError}
+        </p>
+      )}
+      {actionMessage && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {actionMessage}
+        </p>
+      )}
+      {!actionMessage && order.stockWarning && order.status === "APPROVED" && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Approved without reserving stock: {order.stockWarning}
         </p>
       )}
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,14 +69,6 @@ export default function TeamFieldPage() {
         <div>
           <h1 className="text-3xl font-bold">Team field activity</h1>
           <p className="text-muted-foreground">Daily plans vs actuals, visits, and GPS</p>
-        </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href="/dashboard/field/tracking">Live map</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/dashboard/reports/field">Plan vs actual</Link>
-          </Button>
         </div>
       </div>
 

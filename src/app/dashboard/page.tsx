@@ -238,12 +238,22 @@ export default function DashboardPage() {
   };
 
   const approveOrder = async (id: string) => {
-    const res = await apiFetch(`/api/orders/${id}/approve`, { method: "POST" });
+    const res = await apiFetch(`/api/orders/${id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const body = await res.json().catch(() => ({}));
     if (res.ok) {
+      if (body.stockWarning) {
+        alert(`Order approved. Stock was not reserved: ${body.stockWarning}`);
+      }
       await refreshPending();
       const r = await apiFetch("/api/orders?limit=5");
       const data = await r.json();
       setRecentOrders(Array.isArray(data) ? data.slice(0, 5) : []);
+    } else {
+      alert(body.error || "Approval failed");
     }
   };
 

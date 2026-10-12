@@ -7,15 +7,15 @@ import Link from "next/link";
 
 const settingsItems = [
   {
-    title: "Email & invitations",
-    description: "Invite staff and send monthly management reports",
+    title: "Send report",
+    description: "Email the monthly, sales, aging, product, or dealer report to the founder",
     icon: Mail,
     href: "/dashboard/settings/email",
     color: "bg-indigo-100 text-indigo-600",
   },
   {
     title: "User Management",
-    description: "View team and invite new users",
+    description: "Create Sales, Account, and Logistics logins",
     icon: Users,
     href: "/dashboard/settings/users",
     color: "bg-blue-100 text-blue-600",

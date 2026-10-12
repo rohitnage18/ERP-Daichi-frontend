@@ -74,6 +74,7 @@ export const roleAllowedPrefixes: Record<string, string[]> = {
 /** Paths each role must not open (layout redirects to /dashboard/unauthorized). */
 export const roleBlockedPrefixes: Record<string, string[]> = {
   MANAGEMENT_ADMIN: [
+    "/dashboard/field",
     "/dashboard/recommendations",
     "/dashboard/billing",
     "/dashboard/logistics",

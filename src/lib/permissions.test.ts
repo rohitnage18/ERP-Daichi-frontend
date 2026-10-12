@@ -58,8 +58,7 @@ const pages = [
 
 const sidebar = [
   { href: "/dashboard", roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "PRODUCTION_LOGISTICS", "ACCOUNT"] },
-  { href: "/dashboard/field", roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN"] },
-  { href: "/dashboard/field/team", roles: ["MANAGEMENT_ADMIN"] },
+  { href: "/dashboard/field", roles: ["SALES_MARKETING"] },
   { href: "/dashboard/dealers", roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "ACCOUNT"] },
   { href: "/dashboard/products", roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "PRODUCTION_LOGISTICS", "ACCOUNT"] },
   { href: "/dashboard/orders", roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "PRODUCTION_LOGISTICS", "ACCOUNT"] },
@@ -73,8 +72,8 @@ const sidebar = [
   { href: "/dashboard/finance/debit-notes", roles: ["ACCOUNT"] },
   { href: "/dashboard/billing/export", roles: ["ACCOUNT"] },
   { href: "/dashboard/reports", roles: ["MANAGEMENT_ADMIN"] },
-  { href: "/dashboard/field/tracking", roles: ["MANAGEMENT_ADMIN"] },
   { href: "/dashboard/approvals", roles: ["MANAGEMENT_ADMIN"] },
+  { href: "/dashboard/settings/users", roles: ["MANAGEMENT_ADMIN"] },
   { href: "/dashboard/settings/email", roles: ["MANAGEMENT_ADMIN"] },
   { href: "/dashboard/settings", roles: ["MANAGEMENT_ADMIN"] },
 ];
@@ -161,6 +160,9 @@ describe("role route guards", () => {
     assert.equal(isPathBlockedForRole("/dashboard/field/activity", "SALES_MARKETING"), false);
     assert.equal(isPathBlockedForRole("/dashboard/field/closing", "SALES_MARKETING"), false);
     assert.equal(isPathBlockedForRole("/dashboard/field/tracking", "SALES_MARKETING"), false);
+    assert.equal(isPathBlockedForRole("/dashboard/field", "MANAGEMENT_ADMIN"), true);
+    assert.equal(isPathBlockedForRole("/dashboard/field/team", "MANAGEMENT_ADMIN"), true);
+    assert.equal(isPathBlockedForRole("/dashboard/field/tracking", "MANAGEMENT_ADMIN"), true);
     assert.equal(isPathBlockedForRole("/dashboard/inventory", "MANAGEMENT_ADMIN"), false);
     assert.equal(isPathBlockedForRole("/dashboard/reports/field", "MANAGEMENT_ADMIN"), false);
     assert.equal(isPathBlockedForRole("/dashboard/reports/field", "SALES_MARKETING"), true);

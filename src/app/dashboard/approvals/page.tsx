@@ -238,10 +238,23 @@ export default function ApprovalsPage() {
   const handleApproveOrder = async (id: string) => {
     setActionLoading(true);
     try {
-      const res = await apiFetch(`/api/orders/${id}/approve`, { method: "POST" });
-      if (res.ok) fetchPendingItems();
+      const res = await apiFetch(`/api/orders/${id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        if (data.stockWarning) {
+          alert(`Order approved. Stock was not reserved: ${data.stockWarning}`);
+        }
+        fetchPendingItems();
+      } else {
+        alert(data.error || "Approval failed");
+      }
     } catch (error) {
       console.error("Approval failed:", error);
+      alert("Approval failed");
     } finally {
       setActionLoading(false);
     }

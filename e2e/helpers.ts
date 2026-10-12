@@ -37,8 +37,6 @@ export const ROLES = [
     name: "Admin",
     email: "admin@xenvolt.com",
     extraPages: [
-      "/dashboard/field/history",
-      "/dashboard/field/tracking",
       "/dashboard/inventory",
       "/dashboard/reports/field",
       "/dashboard/products/new",
@@ -51,6 +49,9 @@ export const ROLES = [
       "/dashboard/settings/profile",
     ],
     blocked: [
+      "/dashboard/field",
+      "/dashboard/field/team",
+      "/dashboard/field/tracking",
       "/dashboard/billing",
       "/dashboard/logistics",
       "/dashboard/finance/invoices",

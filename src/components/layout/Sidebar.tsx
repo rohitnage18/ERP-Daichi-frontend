@@ -22,6 +22,7 @@ import {
   ClipboardList,
   MapPinned,
   Mail,
+  UserCog,
   FileSpreadsheet,
   Calculator,
   X,
@@ -29,8 +30,7 @@ import {
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "PRODUCTION_LOGISTICS", "ACCOUNT"] },
-  { name: "Field work", href: "/dashboard/field", icon: MapPinned, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN"] },
-  { name: "Field team", href: "/dashboard/field/team", icon: MapPinned, roles: ["MANAGEMENT_ADMIN"] },
+  { name: "Field work", href: "/dashboard/field", icon: MapPinned, roles: ["SALES_MARKETING"] },
   { name: "Dealers", href: "/dashboard/dealers", icon: Users, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "ACCOUNT"] },
   { name: "Products", href: "/dashboard/products", icon: Package, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "PRODUCTION_LOGISTICS", "ACCOUNT"] },
   { name: "Orders", href: "/dashboard/orders", icon: ShoppingCart, roles: ["SALES_MARKETING", "MANAGEMENT_ADMIN", "PRODUCTION_LOGISTICS", "ACCOUNT"] },
@@ -44,9 +44,9 @@ const navigation = [
   { name: "Debit Notes", href: "/dashboard/finance/debit-notes", icon: Receipt, roles: ["ACCOUNT"] },
   { name: "GSTN Export", href: "/dashboard/billing/export", icon: FileSpreadsheet, roles: ["ACCOUNT"] },
   { name: "Reports", href: "/dashboard/reports", icon: BarChart3, roles: ["MANAGEMENT_ADMIN"] },
-  { name: "Live tracking", href: "/dashboard/field/tracking", icon: MapPinned, roles: ["MANAGEMENT_ADMIN"] },
   { name: "Approvals", href: "/dashboard/approvals", icon: ClipboardList, roles: ["MANAGEMENT_ADMIN"] },
-  { name: "Email & invites", href: "/dashboard/settings/email", icon: Mail, roles: ["MANAGEMENT_ADMIN"] },
+  { name: "Users", href: "/dashboard/settings/users", icon: UserCog, roles: ["MANAGEMENT_ADMIN"] },
+  { name: "Send report", href: "/dashboard/settings/email", icon: Mail, roles: ["MANAGEMENT_ADMIN"] },
   { name: "Settings", href: "/dashboard/settings", icon: Settings, roles: ["MANAGEMENT_ADMIN"] },
 ];
 
